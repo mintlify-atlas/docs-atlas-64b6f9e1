@@ -1,0 +1,188 @@
+---
+title: "Events"
+description: "Subscribing to and intercepting Gantt events"
+---
+
+The Gantt fires an event for every action that occurs, whether triggered by the user or by `api.exec()`. You can listen to events to react to changes, or intercept them to validate and cancel operations.
+
+## Listening to events with api.on()
+
+`api.on()` registers a callback that fires **after** an action has been applied to the state. Use it to react to changes, sync to a backend, or update external UI.
+
+```typescript
+function init(api) {
+  api.on("add-task", ({ id, task }) => {
+    console.log("Task created:", id, task.text);
+  });
+
+  api.on("update-task", ({ id, task }) => {
+    console.log("Task updated:", id);
+  });
+
+  api.on("delete-task", ({ id }) => {
+    console.log("Task deleted:", id);
+  });
+}
+```
+
+You can also handle events directly as component props using the `on<ActionName>` naming convention:
+
+```svelte
+<Gantt
+  {tasks}
+  {links}
+  onaddtask={({ id, task }) => console.log("Added:", id)}
+  onupdatetask={({ id }) => console.log("Updated:", id)}
+  ondeletetask={({ id }) => console.log("Deleted:", id)}
+/>
+```
+
+<Note>
+  Event prop names are derived by removing hyphens from the action name and prepending `on`. For example, `"add-task"` becomes `onaddtask`.
+</Note>
+
+## Intercepting events with api.intercept()
+
+`api.intercept()` registers a callback that fires **before** the action is processed. Return `false` from the callback to cancel the action. Any other return value (including `undefined`) allows the action to proceed.
+
+```typescript
+function init(api) {
+  // Prevent deleting tasks that still have subtasks
+  api.intercept("delete-task", ({ id }) => {
+    const task = api.getTask(id);
+    if (task.data?.length) {
+      alert("Remove subtasks before deleting this task.");
+      return false; // cancels the deletion
+    }
+  });
+}
+```
+
+## Difference between on() and intercept()
+
+| | `api.on()` | `api.intercept()` |
+|---|---|---|
+| **When it fires** | After the action is applied | Before the action is applied |
+| **Can cancel the action** | No | Yes, by returning `false` |
+| **Use case** | Reacting to changes, syncing to backend | Validating, guarding, or blocking changes |
+
+## Cancelling an action
+
+Return `false` from an `intercept` callback to cancel the action. The state is not modified and no `on()` callbacks fire.
+
+```typescript
+function init(api) {
+  let allowAdd = true;
+
+  // Dynamically block or allow adding tasks
+  api.intercept("add-task", () => {
+    if (!allowAdd) return false;
+  });
+
+  // Block drag-reordering but allow horizontal drag
+  api.intercept("drag-task", (ev) => {
+    if (typeof ev.top !== "undefined") return false; // block vertical reorder
+  });
+
+  // Block creating new links
+  api.intercept("add-link", () => false);
+}
+```
+
+## Grouping and removing listeners
+
+Pass a `tag` to group related listeners. Call `api.detach(tag)` to remove all listeners in the group at once.
+
+```typescript
+const tag = Symbol("ganttListeners");
+
+function init(api) {
+  api.on("add-task", onAddTask, { tag });
+  api.on("update-task", onUpdateTask, { tag });
+  api.intercept("delete-task", guard, { tag });
+}
+
+// Later, remove all listeners at once
+function cleanup() {
+  api.detach(tag);
+}
+```
+
+## Available events
+
+Every action listed in [Actions](/api/actions) is also an event. The same parameters are passed to the callback. Below is a quick reference.
+
+### Task events
+
+| Event | When it fires | Key params |
+|-------|--------------|------------|
+| `add-task` | After a task is added | `id`, `task`, `target`, `mode` |
+| `update-task` | After a task is updated | `id`, `task` |
+| `delete-task` | After a task is deleted | `id`, `source` (parent ID) |
+| `copy-task` | After a task is copied | `id` (new), `source` (original) |
+| `move-task` | After a task is moved | `id`, `target`, `mode`, `source` |
+| `indent-task` | After indent/outdent | `id`, `mode` |
+| `open-task` | After expand/collapse | `id`, `mode` |
+| `select-task` | After selection changes | `id`, `toggle`, `range` |
+| `drag-task` | During drag | `id`, `left`, `top`, `width`, `inProgress` |
+
+### Link events
+
+| Event | When it fires | Key params |
+|-------|--------------|------------|
+| `add-link` | After a link is added | `id`, `link` |
+| `update-link` | After a link is updated | `id`, `link` |
+| `delete-link` | After a link is deleted | `id` |
+
+### View events
+
+| Event | When it fires | Key params |
+|-------|--------------|------------|
+| `scroll-chart` | After the chart scrolls | `left`, `top`, `date` |
+| `resize-chart` | After the chart resizes | `width`, `height` |
+| `sort-tasks` | After tasks are sorted | `key`, `order` |
+| `filter-tasks` | After tasks are filtered | `filter`, `key`, `value` |
+| `zoom-scale` | After zoom changes | `dir`, `ratio`, `offset` |
+
+### PRO events
+
+| Event | When it fires | Key params |
+|-------|--------------|------------|
+| `undo` | After an undo | — |
+| `redo` | After a redo | — |
+| `export-data` | When export is triggered | `format`, `fileName`, ... |
+
+## Full example
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  let tasks = $state([...]);
+  let links = $state([...]);
+
+  function init(api) {
+    // Log all task changes
+    api.on("add-task",    ({ id, task }) => saveToServer("POST",   task));
+    api.on("update-task", ({ id, task }) => saveToServer("PUT",    task));
+    api.on("delete-task", ({ id })       => saveToServer("DELETE", { id }));
+
+    // Guard: require task text before adding
+    api.intercept("add-task", ({ task }) => {
+      if (!task.text?.trim()) {
+        alert("Task name is required.");
+        return false;
+      }
+    });
+
+    // Guard: prevent all link creation
+    api.intercept("add-link", () => false);
+  }
+
+  function saveToServer(method, data) {
+    fetch("/api/tasks", { method, body: JSON.stringify(data) });
+  }
+</script>
+
+<Gantt {tasks} {links} {init} />
+```

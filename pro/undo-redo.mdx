@@ -1,0 +1,125 @@
+---
+title: Undo / Redo
+description: Step backward and forward through the full edit history using the undo prop and undo/redo actions.
+---
+
+<Note>
+  Undo/redo is a **PRO feature**. See [licensing and trial info](https://svar.dev/svelte/gantt/#pro).
+</Note>
+
+The undo/redo system records every data-mutating action (task edits, drag-and-drop, link changes, etc.) into a history stack. Users can step backward and forward through that stack programmatically or via UI controls.
+
+## The `undo` Prop
+
+Set `undo` (or `undo={true}`) on the `<Gantt>` component to enable history tracking:
+
+```svelte
+<Gantt undo tasks={data.tasks} links={data.links} scales={data.scales} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `undo` | `boolean` | `false` | Enables the history stack and activates `undo`/`redo` action handling. |
+
+## Undo and Redo Actions
+
+Call `api.exec("undo")` and `api.exec("redo")` to move through the history:
+
+```javascript
+// step backward one operation
+api.exec("undo");
+
+// step forward one operation
+api.exec("redo");
+```
+
+## The `IHistory` Type
+
+The current state of the history stack is exposed as a reactive store value:
+
+```typescript
+interface IHistory {
+  undo: number; // number of operations that can be undone
+  redo: number; // number of operations that can be redone
+}
+```
+
+Access it via `api.getReactiveState().history`:
+
+```javascript
+const history = api.getReactiveState().history;
+// $history.undo — count of undoable operations
+// $history.redo — count of redoable operations
+```
+
+## Adding Undo/Redo Buttons to a Toolbar
+
+The example below adds dedicated Undo and Redo buttons above the Gantt. Each button is disabled when the respective stack is empty, and displays a badge showing the number of available steps:
+
+```svelte
+<script>
+  import { Button } from "@svar-ui/svelte-core";
+  import { getData } from "../data";
+  import { Gantt, Editor, ContextMenu } from "@svar-ui/svelte-gantt";
+
+  let api = $state();
+  const { tasks, links, scales } = getData();
+  let history = $state();
+
+  function handleUndo() {
+    api.exec("undo");
+  }
+  function handleRedo() {
+    api.exec("redo");
+  }
+
+  function init(ganttApi) {
+    api = ganttApi;
+    history = api.getReactiveState().history;
+  }
+</script>
+
+<div class="buttons">
+  <Button
+    type="primary"
+    onclick={handleUndo}
+    disabled={history && !$history.undo}
+  >
+    Undo
+  </Button>
+  {#if history && $history.undo}
+    <span>{$history.undo}</span>
+  {/if}
+
+  <Button
+    type="primary"
+    onclick={handleRedo}
+    disabled={history && !$history.redo}
+  >
+    Redo
+  </Button>
+  {#if history && $history.redo}
+    <span>{$history.redo}</span>
+  {/if}
+</div>
+
+<ContextMenu {api}>
+  <Gantt {init} {tasks} {links} {scales} undo />
+</ContextMenu>
+<Editor {api} />
+```
+
+<Tip>
+  The `init` callback pattern (passing a function to the `init` prop) lets you capture the API reference and initialize reactive state in a single step, before the component is fully mounted.
+</Tip>
+
+## What Gets Recorded
+
+The history stack records all standard data-mutating operations exposed through the Gantt action system, including:
+
+- Adding, updating, and deleting tasks
+- Moving and resizing task bars via drag-and-drop
+- Adding and deleting dependency links
+- Reordering tasks in the grid
+
+Read-only actions (scrolling, zooming, filtering) are not recorded.

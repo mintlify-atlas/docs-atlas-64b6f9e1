@@ -1,0 +1,220 @@
+---
+title: "Svelte 4 to Svelte 5 migration"
+description: "Upgrade from the legacy wx-svelte-gantt package to @svar-ui/svelte-gantt for Svelte 5 compatibility."
+---
+
+The 2.x release of SVAR Svelte Gantt was rewritten for Svelte 5 and published under a new package name. This guide covers every breaking change introduced between the 1.x (Svelte 4) line and the current 2.x (Svelte 5) line, so you can migrate with confidence.
+
+## Package rename
+
+The package was renamed from `wx-svelte-gantt` to `@svar-ui/svelte-gantt`. All imports must be updated to use the new name.
+
+<CodeGroup>
+
+```bash Before (Svelte 4)
+npm install wx-svelte-gantt
+```
+
+```bash After (Svelte 5)
+npm install @svar-ui/svelte-gantt
+```
+
+</CodeGroup>
+
+<CodeGroup>
+
+```svelte Before
+<script>
+  import { Gantt } from "wx-svelte-gantt";
+</script>
+```
+
+```svelte After
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+</script>
+```
+
+</CodeGroup>
+
+## Migration steps
+
+<Steps>
+  <Step title="Upgrade to Svelte 5">
+    Ensure your project is running Svelte 5 before installing the new package. The 2.x line does not support Svelte 4.
+  </Step>
+
+  <Step title="Replace the package">
+    Uninstall the old package and install the new one.
+
+    ```bash
+    npm uninstall wx-svelte-gantt
+    npm install @svar-ui/svelte-gantt
+    ```
+  </Step>
+
+  <Step title="Update all imports">
+    Replace every occurrence of `wx-svelte-gantt` with `@svar-ui/svelte-gantt` in your source files.
+  </Step>
+
+  <Step title="Replace the built-in editor">
+    The default sidebar editor and the `editorShape` property were removed in 2.2.0. Use the standalone `<Editor>` component instead.
+
+    See the [editor migration section](#editor-editorshape-removed-220) below.
+  </Step>
+
+  <Step title="Update table action column id">
+    If you reference the action column by id, change `"action"` to `"add-task"`. See [below](#table-action-column-id-changed-220).
+  </Step>
+
+  <Step title="Update scale format strings">
+    Scales `format` strings changed from date-fns syntax to SVAR locale syntax in 2.4.0. See [below](#scales-format-string-changed-240).
+  </Step>
+
+  <Step title="Update fullscreen helper import">
+    The fullscreen helper moved to `@svar-ui/svelte-core` in 2.4.0. See [below](#fullscreen-helper-moved-240).
+  </Step>
+
+  <Step title="Remove expand-scale action usage">
+    The `"expand-scale"` action was removed in 2.6.0. Remove any code that dispatches or handles it. See [below](#expand-scale-action-removed-260).
+  </Step>
+</Steps>
+
+## Breaking changes
+
+### Editor / `editorShape` removed (2.2.0)
+
+The built-in sidebar editor and the `editorShape` prop on `<Gantt>` were removed. You now mount the standalone `<Editor>` component yourself and pass it an `api` reference from the Gantt.
+
+<CodeGroup>
+
+```svelte Before
+<script>
+  import { Gantt } from "wx-svelte-gantt";
+
+  const editorShape = [
+    { type: "text", key: "text", label: "Task name" },
+    { type: "date", key: "start", label: "Start date" },
+    { type: "date", key: "end", label: "End date" },
+  ];
+</script>
+
+<Gantt {tasks} {links} {scales} {editorShape} />
+```
+
+```svelte After
+<script>
+  import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+
+  let api;
+
+  const editorShape = [
+    { type: "text", key: "text", label: "Task name" },
+    { type: "date", key: "start", label: "Start date" },
+    { type: "date", key: "end", label: "End date" },
+  ];
+</script>
+
+<Gantt {tasks} {links} {scales} bind:api />
+<Editor {api} shape={editorShape} />
+```
+
+</CodeGroup>
+
+### Table action column id changed (2.2.0)
+
+The id of the built-in action column was renamed from `"action"` to `"add-task"`. Update any column configuration or event handlers that reference this id.
+
+<CodeGroup>
+
+```javascript Before
+const columns = [
+  { id: "text", header: "Task", flexgrow: 1 },
+  { id: "action" }, // built-in action column
+];
+```
+
+```javascript After
+const columns = [
+  { id: "text", header: "Task", flexgrow: 1 },
+  { id: "add-task" }, // built-in action column
+];
+```
+
+</CodeGroup>
+
+### Scales format string changed (2.4.0)
+
+<Warning>
+This change silently produces incorrect scale labels if you forget to update your format strings. Double-check every `format` value in your `scales` array after migrating.
+</Warning>
+
+Scale `format` strings changed from date-fns token syntax to SVAR locale format syntax. The two syntaxes use different tokens for the same date parts.
+
+Common token equivalents:
+
+| date-fns (before) | SVAR locale (after) | Output example |
+|---|---|---|
+| `MMMM yyyy` | `%F %Y` | January 2024 |
+| `MMM` | `%M` | Jan |
+| `d` | `%j` | 7 |
+| `EEE` | `%D` | Mon |
+| `HH:mm` | `%H:%i` | 09:30 |
+
+<CodeGroup>
+
+```javascript Before (date-fns tokens)
+const scales = [
+  { unit: "month", step: 1, format: "MMMM yyyy" },
+  { unit: "day",   step: 1, format: "d" },
+];
+```
+
+```javascript After (SVAR locale tokens)
+const scales = [
+  { unit: "month", step: 1, format: "%F %Y" },
+  { unit: "day",   step: 1, format: "%j" },
+];
+```
+
+</CodeGroup>
+
+### Fullscreen helper moved (2.4.0)
+
+The fullscreen utility function moved from `@svar-ui/svelte-gantt` to `@svar-ui/svelte-core`. Update the import path.
+
+<CodeGroup>
+
+```javascript Before
+import { Fullscreen } from "@svar-ui/svelte-gantt";
+```
+
+```javascript After
+import { Fullscreen } from "@svar-ui/svelte-core";
+```
+
+</CodeGroup>
+
+Install `@svar-ui/svelte-core` if it is not already a direct dependency of your project:
+
+```bash
+npm install @svar-ui/svelte-core
+```
+
+### `expand-scale` action removed (2.6.0)
+
+The `"expand-scale"` API action was removed. If you were dispatching this action programmatically, remove those calls. Use the `"resize-chart"` action or the resizer UI instead to manage scale dimensions.
+
+<CodeGroup>
+
+```javascript Before
+api.exec("expand-scale", { ... });
+```
+
+```javascript After
+// "expand-scale" no longer exists — remove this call.
+// Use the resizer line in the UI or the "resize-chart" action
+// to respond to widget dimension changes.
+```
+
+</CodeGroup>

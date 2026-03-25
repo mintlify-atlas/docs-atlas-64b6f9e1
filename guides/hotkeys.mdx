@@ -1,0 +1,121 @@
+---
+title: Keyboard Shortcuts
+description: Use built-in keyboard shortcuts to navigate tasks, copy, paste, delete, undo, and toggle fullscreen in SVAR Gantt.
+---
+
+SVAR Gantt handles keyboard input through the `hotkey` action. When the Gantt (or chart area) has focus and the user presses a supported key combination, the action is dispatched through the event bus and the appropriate operation is performed.
+
+## Supported shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Arrow Up` | Select the task above the current selection |
+| `Arrow Down` | Select the task below the current selection |
+| `Ctrl + C` | Copy the selected task |
+| `Ctrl + X` | Cut the selected task |
+| `Ctrl + V` | Paste the previously copied or cut task |
+| `Ctrl + D` | Delete the selected task |
+| `Backspace` | Delete the selected task |
+| `Ctrl + Z` | Undo the last action |
+| `Ctrl + Y` | Redo the last undone action |
+
+<Note>
+Hotkeys are ignored when the cursor is inside an `<input>` or `<textarea>` element so they do not interfere with text editing.
+</Note>
+
+## How hotkeys work
+
+The hotkey system listens for `keydown` events on the `document`. When a qualifying key combination is detected, it dispatches the `hotkey` action through `api.exec`:
+
+```typescript
+api.exec("hotkey", {
+  key: string,          // normalised key string, e.g. "arrowup", "ctrl+c"
+  event: KeyboardEvent, // the original DOM event
+  eventSource?: string, // "chart" when triggered from the chart area
+});
+```
+
+The store intercepts this action and maps each key to the corresponding Gantt operation.
+
+### Arrow navigation
+
+Arrow Up and Arrow Down move the selection through the flat task list. When triggered from the chart area (`eventSource === "chart"`), the Gantt also scrolls both axes (`xy`) to keep the selected task visible. When triggered from the grid, only vertical scrolling is applied.
+
+## Intercepting and customising hotkeys
+
+You can intercept the `hotkey` action to add custom behaviour or override defaults:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  function init(api) {
+    api.on("hotkey", ({ key, event }) => {
+      if (key === "ctrl+e") {
+        // open a custom editor on Ctrl+E
+        const { selected } = api.getState();
+        if (selected.length) {
+          api.exec("show-editor", { id: selected[selected.length - 1] });
+        }
+      }
+    });
+  }
+</script>
+
+<Gantt {init} {tasks} {links} />
+```
+
+To block a built-in shortcut, intercept the action and return `false`:
+
+```svelte
+<script>
+  function init(api) {
+    api.intercept("hotkey", ({ key }) => {
+      // Disable delete via keyboard
+      if (key === "ctrl+d" || key === "backspace") return false;
+    });
+  }
+</script>
+
+<Gantt {init} {tasks} {links} />
+```
+
+## Fullscreen shortcut
+
+The `Fullscreen` component from `@svar-ui/svelte-core` adds a fullscreen toggle button to the Gantt. It also accepts a `hotkey` prop that registers a keyboard shortcut to toggle fullscreen mode:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+  import { Fullscreen } from "@svar-ui/svelte-core";
+</script>
+
+<!-- Press Ctrl+Shift+F or click the expand icon to toggle fullscreen -->
+<Fullscreen hotkey="ctrl+shift+f">
+  <Gantt {tasks} {links} />
+</Fullscreen>
+```
+
+The `hotkey` string follows the same format used throughout the system: modifier keys joined with `+` in lowercase (`ctrl`, `alt`, `shift`, `meta`), followed by the key name (e.g. `ctrl+shift+f`, `alt+enter`).
+
+### Fullscreen component props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `hotkey` | `string` | Key combination to toggle fullscreen (e.g. `"ctrl+shift+f"`) |
+| `children` | slot | Content to render inside the fullscreen container |
+
+## Key format reference
+
+Key strings are normalised to lowercase with modifiers listed first:
+
+| Key pressed | Normalised string |
+|-------------|-------------------|
+| Ctrl+C | `ctrl+c` |
+| Ctrl+Shift+F | `ctrl+shift+f` |
+| Arrow Up | `arrowup` |
+| Arrow Down | `arrowdown` |
+| Backspace | `backspace` |
+| Space | `space` |
+
+Modifier order in the string is: `ctrl` → `alt` → `meta` → `shift` → key.

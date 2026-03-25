@@ -1,0 +1,177 @@
+---
+title: "ITask"
+description: "Type definition for a Gantt task object"
+---
+
+The `ITask` interface defines the shape of a task object in SVAR Svelte Gantt. Tasks are the primary data unit rendered as bars on the Gantt chart.
+
+## TypeScript definition
+
+```typescript
+export interface ITask {
+  id?: TID;
+  start?: Date;
+  end?: Date;
+  duration?: number;
+  text?: string;
+  details?: string;
+  progress?: number;
+  type?: TTaskType;
+  parent?: TID;
+  open?: boolean;
+  data?: ITask[];
+  base_start?: Date;
+  base_end?: Date;
+  base_duration?: number;
+  rollup?: boolean;
+  unscheduled?: boolean;
+  segments?: Partial<ITask>[];
+  [key: string]: any;
+}
+
+export type TTaskType = "task" | "summary" | "milestone" | string;
+export type TID = string | number;
+```
+
+## Fields
+
+<ParamField body="id" type="string | number">
+  Unique identifier for the task. Auto-generated if not provided when adding a task via `api.exec("add-task", ...)`.
+</ParamField>
+
+<ParamField body="start" type="Date">
+  The start date of the task. Provide a JavaScript `Date` object. Required unless the task is `unscheduled`.
+</ParamField>
+
+<ParamField body="end" type="Date">
+  The end date of the task. If omitted, it is calculated from `start` and `duration`.
+</ParamField>
+
+<ParamField body="duration" type="number">
+  The task duration in `durationUnit` units (days by default). If both `end` and `duration` are provided, `end` takes precedence and `duration` is recalculated.
+</ParamField>
+
+<ParamField body="text" type="string">
+  The display label rendered on the task bar and in the grid **Name** column.
+</ParamField>
+
+<ParamField body="details" type="string">
+  Additional descriptive text shown in the task editor. Not rendered on the chart directly.
+</ParamField>
+
+<ParamField body="progress" type="number">
+  Task completion percentage, from `0` to `100`. Rendered as a filled portion of the task bar.
+</ParamField>
+
+<ParamField body="type" type="'task' | 'summary' | 'milestone' | string" default="task">
+  The task type. Built-in values:
+  - `"task"` — regular task bar
+  - `"summary"` — parent group bar that spans its children
+  - `"milestone"` — zero-duration diamond marker
+  
+  You can register custom types via the `taskTypes` config prop.
+</ParamField>
+
+<ParamField body="parent" type="string | number">
+  ID of the parent task. Set to `0` or omit for root-level tasks. Used to build the task hierarchy.
+</ParamField>
+
+<ParamField body="open" type="boolean" default="false">
+  Whether the task's subtree is expanded. Only relevant for tasks with children (`type: "summary"`).
+</ParamField>
+
+<ParamField body="data" type="ITask[]">
+  Inline array of child task objects. An alternative to using `parent` references. When present, the task is treated as a summary.
+</ParamField>
+
+<ParamField body="base_start" type="Date">
+  Baseline start date used when the `baselines` PRO feature is enabled. Renders a secondary bar showing the original planned schedule.
+</ParamField>
+
+<ParamField body="base_end" type="Date">
+  Baseline end date. Used alongside `base_start` when the `baselines` feature is enabled.
+</ParamField>
+
+<ParamField body="base_duration" type="number">
+  Baseline duration. Calculated automatically if `base_start` and `base_end` are provided.
+</ParamField>
+
+<ParamField body="rollup" type="boolean">
+  When `true`, this task is displayed as a rollup bar inside its parent summary task. Requires the `rollups` config option to be enabled.
+</ParamField>
+
+<ParamField body="unscheduled" type="boolean">
+  When `true`, the task has no scheduled dates and is shown in the unscheduled tasks area. Requires the `unscheduledTasks` PRO config option.
+</ParamField>
+
+<ParamField body="segments" type="Partial<ITask>[]">
+  Array of sub-task segments for split tasks. Each segment is a partial `ITask` with `start`, `end`, and `duration`. Requires the `splitTasks` PRO config option.
+</ParamField>
+
+## Example task objects
+
+<Tabs>
+  <Tab title="Regular task">
+    ```typescript
+    const task: ITask = {
+      id: 1,
+      text: "Design phase",
+      start: new Date("2024-03-01"),
+      end: new Date("2024-03-15"),
+      progress: 60,
+      type: "task",
+      parent: 0
+    };
+    ```
+  </Tab>
+  <Tab title="Summary task with children">
+    ```typescript
+    const summary: ITask = {
+      id: 10,
+      text: "Phase 1",
+      type: "summary",
+      open: true,
+      data: [
+        {
+          id: 11,
+          text: "Research",
+          start: new Date("2024-03-01"),
+          duration: 5
+        },
+        {
+          id: 12,
+          text: "Planning",
+          start: new Date("2024-03-06"),
+          duration: 5
+        }
+      ]
+    };
+    ```
+  </Tab>
+  <Tab title="Milestone">
+    ```typescript
+    const milestone: ITask = {
+      id: 20,
+      text: "Launch",
+      start: new Date("2024-04-01"),
+      type: "milestone"
+    };
+    ```
+  </Tab>
+  <Tab title="With baseline (PRO)">
+    ```typescript
+    const taskWithBaseline: ITask = {
+      id: 30,
+      text: "Development",
+      start: new Date("2024-03-10"),
+      end: new Date("2024-03-25"),
+      base_start: new Date("2024-03-08"),
+      base_end: new Date("2024-03-22")
+    };
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  You can attach arbitrary custom fields to any task object (the interface includes `[key: string]: any`). Custom fields are accessible in column templates and the task editor.
+</Note>

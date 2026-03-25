@@ -1,0 +1,225 @@
+---
+title: "Changelog"
+description: "Full release history for SVAR Svelte Gantt, including new features, updates, fixes, and breaking changes."
+---
+
+<AccordionGroup>
+
+  <Accordion title="2.6.0">
+
+    ### New features
+
+    - Ability to filter data by API calls
+    - Ability to filter data via header filters
+    - Integration with SVAR Filter
+    - Calculating and visualizing slack — **PRO**
+    - Rollups — **PRO**
+
+    ### Updates
+
+    - Ability to scroll to a specific date with the `"scroll-chart"` action
+    - `"resize-chart"` action added to monitor widget dimensions
+
+    ### Fixes
+
+    - Export to PNG/PDF: incorrect link positions
+    - The `"scroll-chart"` action does not scroll to provided coordinates
+    - Chart and grid are sometimes misaligned when vertical scroll appears
+    - Incorrect visible date during zooming
+    - Gantt fails to initialize in SvelteKit with server-side rendering
+
+    ### Breaking changes
+
+    - `"expand-scale"` action is removed
+
+  </Accordion>
+
+  <Accordion title="2.5.2">
+
+    ### Fixes
+
+    - Incorrect grid width after expanding and collapsing it with all columns fixed
+    - Narrow scale does not expand when grid is collapsed by clicking
+    - Tooltips are not shown for segments
+    - Zoom speed is too high with laptop trackpad
+    - Task reordering, opening, and closing fails in case of integer string id
+
+  </Accordion>
+
+  <Accordion title="2.5.1">
+
+    ### Fixes
+
+    - Exported `version` is undefined
+    - Task duration and start date are incorrect during drag-n-drop on some scales
+
+  </Accordion>
+
+  <Accordion title="2.5.0">
+
+    ### New features
+
+    - Server-side export to PNG, PDF, XLSX, MS Project — **PRO**
+    - Client-side export and import from MS Project — **PRO**
+    - Auto calculation of progress for summary tasks — **PRO**
+    - Auto conversion of parent tasks to summary tasks — **PRO**
+
+    ### Fixes
+
+    - Scale is expanded left with a small dataset during screen resizing
+    - Markers ignore scale boundaries
+    - Delete link placeholder is misplaced sometimes
+    - Task bars cannot be resized with `"minute"` `lengthUnit`
+    - Dimensions of summary tasks with subtasks are not correctly calculated during drag-n-drop
+
+  </Accordion>
+
+  <Accordion title="2.4.4">
+
+    ### Fixes
+
+    - Splitting a task is limited to the last segment
+
+  </Accordion>
+
+  <Accordion title="2.4.3">
+
+    Community license changed from GPL to MIT.
+
+    ### Fixes
+
+    - Incorrect initial values for calendar and markers
+    - PRO types are excluded from the MIT version
+
+  </Accordion>
+
+  <Accordion title="2.4.2">
+
+    ### Fixes
+
+    - Incorrect types
+
+  </Accordion>
+
+  <Accordion title="2.4.0">
+
+    ### New features
+
+    - Basic auto scheduling — **PRO**
+    - Handling of invalid links — **PRO**
+    - Critical path calculation — **PRO**
+    - Global calendar to define working schedule — **PRO**
+    - Unscheduled tasks — **PRO**
+    - Vertical markers on timeline — **PRO**
+    - Baselines — **PRO**
+    - Split tasks — **PRO**
+    - Undo/redo — **PRO**
+    - Ability to remove links from the Chart UI
+    - Locale-based scale formatting
+
+    ### Updates
+
+    - Resizer line can be dragged to expand the current display mode
+
+    ### Fixes
+
+    - Summary task size is sometimes incorrect while dragging
+    - Excess reactivity triggers during zooming
+    - ContextMenu CSS cannot be set
+    - Editing tasks breaks dynamic width of narrow scale cells
+
+    ### Breaking changes
+
+    - Scales `format` string changed from date-fns to SVAR locale syntax
+    - Fullscreen helper moved to SVAR Svelte Core (`@svar-ui/svelte-core`)
+
+  </Accordion>
+
+  <Accordion title="2.3.0">
+
+    ### New features
+
+    - TypeScript definitions
+
+    ### Fixes
+
+    - Chart renders bars inaccurately on quarter scale
+    - Impossible to provide custom markup for `"text"` and `"action"` columns
+
+  </Accordion>
+
+  <Accordion title="2.2.1">
+
+    ### Fixes
+
+    - Correct dependencies
+
+  </Accordion>
+
+  <Accordion title="2.2.0">
+
+    ### New features
+
+    - Ability to define `"hour"` duration unit
+    - Ability to define `"minute"` length unit
+    - Ability to create custom scale units
+    - `autoScale` property to configure `start`/`end` scale behaviour
+    - Standalone sidebar and modal `<Editor>` component
+    - Ability to validate fields in the Editor
+    - Hotkeys for common actions and navigation
+    - Multi-sorting for table columns
+    - Header menu to hide table columns
+    - Inline editors for table cells
+    - Ability to expand/collapse table and chart via buttons
+
+    ### Updates
+
+    - Chart grid expands to widget height
+
+    ### Fixes
+
+    - Summary is not always adjusted to children when task type changes
+    - Unnecessary focus over chart area
+    - Task position is not sent to backend on adding
+    - Reordered task appears after deleting
+    - Node painting logic enhanced
+
+    ### Breaking changes
+
+    - Default sidebar editor and `editorShape` property removed — use the standalone `<Editor>` component instead
+    - Table action column id changed from `"action"` to `"add-task"`
+
+  </Accordion>
+
+  <Accordion title="2.1.1">
+
+    ### Fixes
+
+    - Regression with table and chart alignment
+    - Regression with fullscreen functionality
+    - Right and center alignment does not apply to header cells
+
+  </Accordion>
+
+  <Accordion title="2.1.0">
+
+    ### Updates
+
+    - Ability to use custom HTML in column cells
+    - Optimized inner zoom and scale logic
+
+    ### Fixes
+
+    - Impossible to use numeric id for Toolbar and Menu options
+
+  </Accordion>
+
+  <Accordion title="2.0.1">
+
+    ### New features
+
+    - Svelte 5 support
+
+  </Accordion>
+
+</AccordionGroup>

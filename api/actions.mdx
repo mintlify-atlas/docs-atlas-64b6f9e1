@@ -1,0 +1,440 @@
+---
+title: "Actions"
+description: "All available actions for the Gantt API"
+---
+
+Actions are the primary way to modify the Gantt's state programmatically. Call them with `api.exec(actionName, params)`, or intercept them with `api.intercept(actionName, callback)` before they are applied.
+
+```typescript
+// Execute an action
+api.exec("add-task", { task: { text: "New task", start: new Date(), duration: 1 } });
+
+// Intercept and optionally cancel an action
+api.intercept("delete-task", ({ id }) => {
+  return confirm(`Delete task ${id}?`); // returning false cancels the action
+});
+```
+
+## Task actions
+
+### add-task
+
+Adds a new task to the chart.
+
+<ParamField body="task" type="Partial<ITask>" required>
+  Task data for the new task. `start` defaults to the project start if not provided. `duration` defaults to `1`.
+</ParamField>
+
+<ParamField body="target" type="string | number">
+  ID of the reference task. The new task is positioned relative to this task using `mode`.
+</ParamField>
+
+<ParamField body="mode" type="'before' | 'after' | 'child'" default="after">
+  Insertion position relative to `target`. `"child"` adds the new task as a child of `target`.
+</ParamField>
+
+<ParamField body="show" type="boolean | 'x' | 'y' | 'xy'">
+  Scroll the chart to make the new task visible. Pass `true` to scroll vertically, or `"x"`, `"y"`, `"xy"` to control axes.
+</ParamField>
+
+<ParamField body="select" type="boolean" default="true">
+  Automatically select the newly added task.
+</ParamField>
+
+**After the action**: `ev.id` is populated with the generated task ID; `ev.task` is the normalized task object.
+
+```typescript
+await api.exec("add-task", {
+  task: { text: "Research", start: new Date("2024-03-01"), duration: 5 },
+  target: 10,
+  mode: "after",
+  show: true
+});
+```
+
+---
+
+### update-task
+
+Updates an existing task's properties.
+
+<ParamField body="id" type="string | number" required>
+  ID of the task to update.
+</ParamField>
+
+<ParamField body="task" type="Partial<ITask>" required>
+  Object containing the fields to update. Only the provided fields are changed.
+</ParamField>
+
+<ParamField body="segmentIndex" type="number">
+  Index of the segment to update on a split task.
+</ParamField>
+
+<ParamField body="diff" type="number">
+  Internal pixel offset used during drag operations. Not required for direct API calls.
+</ParamField>
+
+```typescript
+api.exec("update-task", {
+  id: 42,
+  task: { text: "Updated name", progress: 80 }
+});
+```
+
+---
+
+### delete-task
+
+Deletes a task and all its children. Also removes any links that reference the deleted task(s).
+
+<ParamField body="id" type="string | number" required>
+  ID of the task to delete.
+</ParamField>
+
+```typescript
+api.exec("delete-task", { id: 42 });
+```
+
+---
+
+### copy-task
+
+Creates a copy of a task and its subtree, placing it relative to a target task.
+
+<ParamField body="id" type="string | number" required>
+  ID of the task to copy.
+</ParamField>
+
+<ParamField body="target" type="string | number">
+  ID of the reference task for placement.
+</ParamField>
+
+<ParamField body="mode" type="'before' | 'after' | 'child'" >
+  Placement mode relative to `target`.
+</ParamField>
+
+**After the action**: `ev.id` contains the new task's ID; `ev.source` contains the original task's ID.
+
+```typescript
+api.exec("copy-task", { id: 42, target: 50, mode: "after" });
+```
+
+---
+
+### move-task
+
+Moves a task to a different position in the task tree or reorders it within its branch.
+
+<ParamField body="id" type="string | number" required>
+  ID of the task to move.
+</ParamField>
+
+<ParamField body="mode" type="'before' | 'after' | 'child' | 'up' | 'down'" required>
+  Move direction or placement relative to `target`.
+  - `"before"` / `"after"` — place adjacent to `target`
+  - `"child"` — place as a child of `target`
+  - `"up"` / `"down"` — move one position in the current branch (no `target` needed)
+</ParamField>
+
+<ParamField body="target" type="string | number">
+  ID of the reference task. Required unless using `"up"` or `"down"` modes.
+</ParamField>
+
+<ParamField body="inProgress" type="boolean">
+  Internal flag used during drag-and-drop. Not required for direct API calls.
+</ParamField>
+
+```typescript
+// Move task 42 before task 50
+api.exec("move-task", { id: 42, mode: "before", target: 50 });
+
+// Move task 42 up one position in its branch
+api.exec("move-task", { id: 42, mode: "up" });
+```
+
+---
+
+### indent-task
+
+Changes the indentation level of a task, effectively making it a child of the previous sibling (`mode: true`) or promoting it to its parent's level (`mode: false`).
+
+<ParamField body="id" type="string | number" required>
+  ID of the task to indent or outdent.
+</ParamField>
+
+<ParamField body="mode" type="boolean" required>
+  `true` to indent (increase nesting level); `false` to outdent (decrease nesting level).
+</ParamField>
+
+```typescript
+api.exec("indent-task", { id: 42, mode: true });  // indent
+api.exec("indent-task", { id: 42, mode: false }); // outdent
+```
+
+---
+
+## Link actions
+
+### add-link
+
+Adds a new dependency link between two tasks.
+
+<ParamField body="link" type="Partial<ILink>" required>
+  Link object. Must include `source`, `target`, and `type`. `id` is auto-generated if omitted.
+</ParamField>
+
+**After the action**: `ev.id` contains the new link's ID; `ev.link` is the normalized link object.
+
+```typescript
+api.exec("add-link", {
+  link: { source: 10, target: 20, type: "e2s" }
+});
+```
+
+---
+
+### update-link
+
+Updates an existing link's properties.
+
+<ParamField body="id" type="string | number" required>
+  ID of the link to update.
+</ParamField>
+
+<ParamField body="link" type="Partial<ILink>" required>
+  Object containing the fields to update.
+</ParamField>
+
+```typescript
+api.exec("update-link", { id: 5, link: { type: "s2s", lag: 2 } });
+```
+
+---
+
+### delete-link
+
+Deletes a dependency link.
+
+<ParamField body="id" type="string | number" required>
+  ID of the link to delete.
+</ParamField>
+
+```typescript
+api.exec("delete-link", { id: 5 });
+```
+
+---
+
+## Selection and navigation
+
+### select-task
+
+Selects a task, optionally scrolling to it.
+
+<ParamField body="id" type="string | number" required>
+  ID of the task to select.
+</ParamField>
+
+<ParamField body="toggle" type="boolean">
+  When `true`, adds the task to the current selection (Ctrl+click behavior).
+</ParamField>
+
+<ParamField body="range" type="boolean">
+  When `true`, selects a range from the last selected task to this one (Shift+click behavior).
+</ParamField>
+
+<ParamField body="show" type="boolean">
+  Scroll the chart to make the selected task visible.
+</ParamField>
+
+<ParamField body="focus" type="'grid' | 'chart'">
+  Moves keyboard focus to the grid or chart area after selection.
+</ParamField>
+
+```typescript
+api.exec("select-task", { id: 42, show: true });
+```
+
+---
+
+### open-task
+
+Expands or collapses a summary task.
+
+<ParamField body="id" type="string | number" required>
+  ID of the summary task.
+</ParamField>
+
+<ParamField body="mode" type="boolean" required>
+  `true` to expand; `false` to collapse.
+</ParamField>
+
+```typescript
+api.exec("open-task", { id: 10, mode: true });  // expand
+api.exec("open-task", { id: 10, mode: false }); // collapse
+```
+
+---
+
+## Display actions
+
+### sort-tasks
+
+Sorts the task list by a column.
+
+<ParamField body="key" type="string" required>
+  The task field name to sort by (e.g. `"text"`, `"start"`, `"duration"`).
+</ParamField>
+
+<ParamField body="order" type="'asc' | 'desc'" required>
+  Sort direction.
+</ParamField>
+
+<ParamField body="add" type="boolean">
+  When `true`, adds this sort criterion to an existing multi-column sort instead of replacing it.
+</ParamField>
+
+```typescript
+api.exec("sort-tasks", { key: "start", order: "asc" });
+```
+
+---
+
+### filter-tasks
+
+Filters the visible tasks.
+
+<ParamField body="filter" type="(task: ITask) => boolean">
+  Custom filter function. Return `true` to show a task, `false` to hide it.
+</ParamField>
+
+<ParamField body="key" type="string">
+  Field name for built-in filter (used with the header filter menu).
+</ParamField>
+
+<ParamField body="value" type="any">
+  Filter value for the built-in column filter.
+</ParamField>
+
+<ParamField body="open" type="boolean" default="true">
+  When `true`, matching parent tasks are expanded to show filtered children.
+</ParamField>
+
+```typescript
+// Custom filter: show only incomplete tasks
+api.exec("filter-tasks", {
+  filter: (task) => (task.progress ?? 0) < 100
+});
+
+// Clear filters
+api.exec("filter-tasks", {});
+```
+
+---
+
+### scroll-chart
+
+Programmatically scrolls the chart area.
+
+<ParamField body="left" type="number">
+  Horizontal scroll position in pixels.
+</ParamField>
+
+<ParamField body="top" type="number">
+  Vertical scroll position in pixels.
+</ParamField>
+
+<ParamField body="date" type="Date">
+  Scroll to a specific date on the horizontal axis. Takes precedence over `left` if both are provided.
+</ParamField>
+
+```typescript
+// Scroll to a date
+api.exec("scroll-chart", { date: new Date("2024-06-01") });
+
+// Scroll to pixel position
+api.exec("scroll-chart", { left: 500, top: 0 });
+```
+
+---
+
+### resize-chart
+
+Notifies the chart of a container size change. This is normally called internally on resize events.
+
+<ParamField body="width" type="number" required>
+  New chart width in pixels.
+</ParamField>
+
+<ParamField body="height" type="number" required>
+  New chart height in pixels.
+</ParamField>
+
+<ParamField body="scrollSize" type="number" required>
+  Scrollbar size in pixels.
+</ParamField>
+
+---
+
+## Data actions
+
+### export-data
+
+Exports the Gantt chart to a file. PRO feature.
+
+<ParamField body="url" type="string">
+  Export server URL.
+</ParamField>
+
+<ParamField body="format" type="'pdf' | 'png' | 'xlsx' | 'mspx'">
+  Output format.
+</ParamField>
+
+<ParamField body="fileName" type="string">
+  Name for the downloaded file.
+</ParamField>
+
+<ParamField body="pdf" type="object">
+  PDF-specific options: `{ fitSize?, size?, landscape?, styles?, margins?, header?, footer?, scale? }`.
+</ParamField>
+
+<ParamField body="png" type="object">
+  PNG-specific options: `{ fitSize?, size?, landscape?, styles? }`.
+</ParamField>
+
+<ParamField body="excel" type="object">
+  Excel-specific options: `{ sheetNames?, visual?, dateFormat?, columns?, indent? }`.
+</ParamField>
+
+```typescript
+api.exec("export-data", { format: "pdf", fileName: "gantt" });
+```
+
+---
+
+### undo / redo
+
+Traverses the undo/redo history. Requires `undo: true` in the config. PRO feature.
+
+```typescript
+api.exec("undo", {});
+api.exec("redo", {});
+```
+
+---
+
+## Internal actions
+
+The following actions are used internally by the Gantt. They can be intercepted but are not intended for direct external use.
+
+| Action | Description |
+|--------|-------------|
+| `drag-task` | Fired during a drag operation with pixel coordinates |
+| `zoom-scale` | Fired on mouse-wheel zoom |
+| `render-data` | Updates the visible area viewport |
+| `request-data` | Requests lazy-loaded child data for a task |
+| `provide-data` | Injects lazy-loaded data into the store |
+| `show-editor` | Opens the task editor panel |
+| `hotkey` | Fired on keyboard shortcut |
+| `schedule-tasks` | Triggers auto-scheduling recalculation |
+| `split-task` | Splits a task into segments |

@@ -1,0 +1,333 @@
+---
+title: "RestDataProvider"
+description: "Connect SVAR Svelte Gantt to a REST backend"
+---
+
+`RestDataProvider` is a built-in data provider that syncs Gantt operations to a REST API. It handles all CRUD operations for tasks and links, with optional batch request support to reduce network round-trips.
+
+## Installation
+
+`RestDataProvider` is shipped in a separate package:
+
+```bash
+npm install @svar-ui/gantt-data-provider
+```
+
+## Quick start
+
+```svelte
+<script>
+  import { Gantt, ContextMenu, Editor } from "@svar-ui/svelte-gantt";
+  import { RestDataProvider } from "@svar-ui/gantt-data-provider";
+
+  const provider = new RestDataProvider("https://your-api.example.com");
+
+  let tasks = $state();
+  let links = $state();
+
+  // Load initial data from the server
+  provider.getData().then(({ tasks: t, links: l }) => {
+    tasks = t;
+    links = l;
+  });
+
+  function init(api) {
+    // Wire the provider to receive all actions
+    api.setNext(provider);
+
+    // Handle lazy-loading of child tasks
+    api.on("request-data", (ev) => {
+      provider.getData(ev.id).then(({ tasks, links }) => {
+        api.exec("provide-data", { id: ev.id, data: { tasks, links } });
+      });
+    });
+  }
+</script>
+
+<ContextMenu {api}>
+  <Gantt bind:this={api} {init} {tasks} {links} />
+</ContextMenu>
+<Editor {api} />
+```
+
+## Constructor
+
+```typescript
+new RestDataProvider(url: string, config?: Partial<{ batchURL: string }>)
+```
+
+<ParamField body="url" type="string" required>
+  Base URL of your REST API. All endpoint paths are appended to this URL. Do not include a trailing slash.
+
+  ```typescript
+  const provider = new RestDataProvider("https://api.example.com");
+  ```
+</ParamField>
+
+<ParamField body="config.batchURL" type="string">
+  When provided, multiple rapid changes are queued and sent as a single batch POST request to this URL instead of individual requests. Useful for reducing server load during drag-and-drop operations.
+
+  ```typescript
+  const provider = new RestDataProvider("https://api.example.com", {
+    batchURL: "batch"
+  });
+  ```
+</ParamField>
+
+## Methods
+
+### getData()
+
+Fetches tasks and links from the server.
+
+<ParamField body="id" type="string | number">
+  When provided, fetches child tasks and links for a specific parent task ID (lazy loading). When omitted, fetches the full dataset.
+</ParamField>
+
+**Returns**: `Promise<{ tasks: ITask[]; links: ILink[] }>`
+
+Dates in the response are automatically parsed from ISO strings to JavaScript `Date` objects via `parseDates()`.
+
+```typescript
+// Initial load
+const { tasks, links } = await provider.getData();
+
+// Lazy load children of task 42
+const { tasks: children, links: childLinks } = await provider.getData(42);
+```
+
+**Endpoints called**:
+- `GET {url}/tasks` — all tasks
+- `GET {url}/links` — all links
+- `GET {url}/tasks/{id}` — children of task `id`
+- `GET {url}/links/{id}` — links for task `id`
+
+---
+
+### parseDates()
+
+Converts `start`, `end`, `base_start`, and `base_end` string values in a task array to JavaScript `Date` objects.
+
+<ParamField body="data" type="ITask[]" required>
+  Array of task objects with date fields as strings.
+</ParamField>
+
+**Returns**: `ITask[]` — the same array with dates converted in-place.
+
+```typescript
+const rawTasks = await fetch("/api/tasks").then(r => r.json());
+const tasks = provider.parseDates(rawTasks);
+```
+
+---
+
+### formatDate()
+
+Formats a JavaScript `Date` for inclusion in a JSON request body. Returns a string in `"yyyy-MM-dd HH:mm:ss"` format.
+
+<ParamField body="date" type="Date" required>
+  The date to format.
+</ParamField>
+
+**Returns**: `string`
+
+```typescript
+provider.formatDate(new Date("2024-03-01T09:00:00")); // "2024-03-01 09:00:00"
+```
+
+---
+
+### sendBatch()
+
+Sends a request, either directly or via the batch queue if `batchURL` is configured.
+
+<ParamField body="url" type="string" required>
+  Relative URL path, e.g. `"tasks/42"`.
+</ParamField>
+
+<ParamField body="method" type="string" required>
+  HTTP method: `"GET"`, `"POST"`, `"PUT"`, `"DELETE"`.
+</ParamField>
+
+<ParamField body="data" type="any">
+  Request body. Date values are automatically formatted via `formatDate()`.
+</ParamField>
+
+<ParamField body="customHeaders" type="object">
+  Additional HTTP headers to merge with the default `Content-Type: application/json`.
+</ParamField>
+
+**Returns**: `Promise<T>`
+
+---
+
+### send()
+
+Sends a single HTTP request directly, bypassing the batch queue.
+
+<ParamField body="url" type="string" required>
+  Relative URL path.
+</ParamField>
+
+<ParamField body="method" type="string" required>
+  HTTP method.
+</ParamField>
+
+<ParamField body="data" type="any">
+  Request body.
+</ParamField>
+
+<ParamField body="customHeaders" type="object">
+  Additional HTTP headers.
+</ParamField>
+
+**Returns**: `Promise<T>`
+
+## REST API endpoints
+
+`RestDataProvider` expects the following endpoints on your backend:
+
+### Tasks
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/tasks` | Return all root-level tasks |
+| `GET` | `/tasks/{id}` | Return child tasks of task `{id}` (lazy load) |
+| `POST` | `/tasks` | Create a new task |
+| `PUT` | `/tasks/{id}` | Update task `{id}`, or perform a `copy` / `move` operation |
+| `DELETE` | `/tasks/{id}` | Delete task `{id}` |
+
+**POST /tasks** request body:
+```json
+{
+  "task": { "text": "New task", "start": "2024-03-01 00:00:00", "duration": 5 },
+  "target": 10,
+  "mode": "after"
+}
+```
+
+The server must return the created task including its server-assigned `id`:
+```json
+{ "id": 99 }
+```
+
+**PUT /tasks/{id}** — update:
+```json
+{ "text": "Updated name", "progress": 80 }
+```
+
+**PUT /tasks/{id}** — copy operation:
+```json
+{
+  "operation": "copy",
+  "id": 100,
+  "target": 20,
+  "mode": "after",
+  "lazy": false
+}
+```
+
+**PUT /tasks/{id}** — move operation:
+```json
+{
+  "operation": "move",
+  "target": 30,
+  "mode": "child"
+}
+```
+
+### Links
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/links` | Return all links |
+| `GET` | `/links/{id}` | Return links for task `{id}` (lazy load) |
+| `POST` | `/links` | Create a new link |
+| `PUT` | `/links/{id}` | Update link `{id}` |
+| `DELETE` | `/links/{id}` | Delete link `{id}` |
+
+**POST /links** request body:
+```json
+{ "source": 10, "target": 20, "type": "e2s" }
+```
+
+The server must return the created link's ID:
+```json
+{ "id": 5 }
+```
+
+## Batch mode
+
+When `batchURL` is configured, multiple rapid changes (e.g. during drag-and-drop) are queued and sent as a single POST request to reduce network overhead.
+
+```typescript
+const provider = new RestDataProvider("https://api.example.com", {
+  batchURL: "batch"
+});
+```
+
+If multiple changes occur within a 10 ms window, they are merged into a single request to `POST {url}/batch`:
+
+```json
+[
+  { "url": "tasks/42", "method": "PUT", "data": { "text": "Updated" } },
+  { "url": "tasks/43", "method": "PUT", "data": { "start": "2024-03-05 00:00:00" } }
+]
+```
+
+If only one change occurs in the window, it is sent as a normal individual request (not to the batch URL).
+
+<Note>
+  Dates are automatically serialized to `"yyyy-MM-dd HH:mm:ss"` format in all request bodies.
+</Note>
+
+## ID mapping
+
+`RestDataProvider` maintains a queue that maps temporary client-side IDs (assigned immediately after `add-task` / `add-link`) to the permanent IDs returned by the server. Subsequent operations that reference those IDs use the server-assigned ID automatically.
+
+This means you can chain operations without waiting for server responses:
+
+```typescript
+// Even though the server hasn't responded yet, the provider
+// will use the correct server ID when the update is sent.
+await api.exec("add-task",    { task: { text: "New" } });
+await api.exec("update-task", { id: newTaskId, task: { progress: 50 } });
+```
+
+## Example with lazy loading
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+  import { RestDataProvider } from "@svar-ui/gantt-data-provider";
+
+  const provider = new RestDataProvider("https://api.example.com");
+
+  let tasks = $state();
+  let links = $state();
+
+  provider.getData().then(({ tasks: t, links: l }) => {
+    tasks = t;
+    links = l;
+  });
+
+  function init(api) {
+    api.setNext(provider);
+
+    // When user expands a lazy task, fetch its children
+    api.on("request-data", async (ev) => {
+      const { tasks, links } = await provider.getData(ev.id);
+      api.exec("provide-data", {
+        id: ev.id,
+        data: { tasks, links }
+      });
+    });
+  }
+</script>
+
+<Gantt bind:this={api} {init} {tasks} {links} />
+```
+
+<Tip>
+  Mark tasks as lazy by setting a custom `lazy: true` property. The Gantt will fire `request-data` when the user expands them instead of trying to render their (missing) children.
+</Tip>

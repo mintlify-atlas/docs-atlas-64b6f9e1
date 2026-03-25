@@ -1,0 +1,163 @@
+---
+title: Task Types
+description: Configure the available task types and customize their appearance in the Gantt chart.
+---
+
+Task types control how bars are rendered on the chart and which fields are editable in
+the task editor. The `taskTypes` prop accepts an array of `ITaskType` objects that
+define the set of types available in your Gantt.
+
+## Default task types
+
+When the `taskTypes` prop is omitted, three types are available out of the box:
+
+```javascript
+[
+  { id: "task",      label: "Task" },
+  { id: "summary",   label: "Summary task" },
+  { id: "milestone", label: "Milestone" },
+]
+```
+
+Each type produces a distinct visual representation:
+
+- **task** — a rectangular bar with an optional progress fill
+- **summary** — a bar that spans the date range of its children; `start`/`end`/`duration`
+  fields are read-only in the editor
+- **milestone** — a diamond shape rendered at a single point in time; only `start` is
+  editable, `end` and `duration` are hidden
+
+## ITaskType fields
+
+<ParamField path="id" type="string | number" required>
+  Unique identifier for the type. This value is stored in `ITask.type` on each task
+  object. Built-in ids are `"task"`, `"summary"`, and `"milestone"`.
+</ParamField>
+
+<ParamField path="label" type="string" required>
+  Human-readable name shown in the task editor's type selector and the context menu.
+</ParamField>
+
+## Assigning a type to a task
+
+Set the `type` field on a task object to one of the registered type ids:
+
+```javascript
+const tasks = [
+  {
+    id: 1,
+    text: "Project planning",
+    parent: 0,
+    type: "summary",
+    open: true,
+  },
+  {
+    id: 10,
+    start: new Date(2026, 3, 2),
+    duration: 3,
+    text: "Marketing analysis",
+    progress: 100,
+    parent: 1,
+    type: "task",
+  },
+  {
+    id: 5,
+    start: new Date(2026, 4, 3),
+    text: "Release 1.0.0",
+    progress: 0,
+    parent: 0,
+    type: "milestone",
+  },
+];
+```
+
+## Adding custom task types
+
+Define additional types by extending the `taskTypes` array. The `id` you choose becomes
+a CSS class applied to the task bar element (prefixed with `wx-`), which lets you style
+custom types with plain CSS.
+
+The example below is taken from `GanttTaskTypes.svelte` and `data.js`:
+
+```svelte
+<script>
+  import { Gantt, Editor, ContextMenu } from "@svar-ui/svelte-gantt";
+
+  const taskTypes = [
+    { id: "task",      label: "Task" },
+    { id: "summary",   label: "Summary task" },
+    { id: "milestone", label: "Milestone" },
+    { id: "urgent",    label: "Urgent" },
+    { id: "narrow",    label: "Narrow" },
+    { id: "progress",  label: "Progress" },
+    { id: "round",     label: "Rounded" },
+  ];
+
+  let api = $state();
+</script>
+
+<ContextMenu {api}>
+  <Gantt
+    bind:this={api}
+    {tasks}
+    {links}
+    {scales}
+    {taskTypes}
+  />
+</ContextMenu>
+<Editor {api} />
+```
+
+### Styling custom types
+
+Each task bar receives a CSS class equal to its `type` value. Target it under the
+`.wx-gantt .wx-bar.wx-task` selector:
+
+```css
+/* Narrow / compact bar */
+.wx-gantt .wx-bar.wx-task.narrow {
+  background-color: #676a81;
+  height: 10px !important;
+  margin-top: 10px;
+  border: 1px solid #63667a;
+}
+
+/* Rounded bar with yellow fill */
+.wx-gantt .wx-bar.wx-task.round {
+  background-color: #ffeb3b;
+  border: 1px solid #ffeb3b;
+  color: #384047;
+  border-radius: 50px;
+}
+.wx-gantt .wx-bar.wx-task.round .wx-progress-percent {
+  background-color: #ffc107;
+}
+.wx-gantt .wx-bar.wx-task.round .wx-progress-wrapper {
+  border-radius: 50px;
+}
+
+/* Outlined progress-style bar */
+.wx-gantt .wx-bar.wx-task.progress {
+  background-color: transparent;
+  border-radius: 50px;
+  border: 1px solid #00bcd4;
+}
+.wx-gantt .wx-bar.wx-task.progress .wx-progress-percent {
+  background-color: #00bcd4;
+}
+
+/* Urgent bar with red-orange accent */
+.wx-gantt .wx-bar.wx-task.urgent {
+  background-color: #f49a82;
+  border: 1px solid #f45e36;
+}
+.wx-gantt .wx-bar.wx-task.urgent .wx-progress-percent {
+  background-color: #f45e36;
+}
+```
+
+<Note>
+Only types with `id` matching `"task"`, `"summary"`, or `"milestone"` receive special
+behavioral treatment (e.g. date-field restrictions in the editor). All other type ids
+are treated as variants of `"task"` for editing purposes and differ only in appearance.
+</Note>

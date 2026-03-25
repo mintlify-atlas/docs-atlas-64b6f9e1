@@ -1,0 +1,253 @@
+---
+title: Localization
+description: Translate the Gantt UI into different languages using built-in locales or a custom locale object.
+---
+
+SVAR Gantt uses a locale system to translate all UI labels — column headers, editor fields, context menu items, toolbar buttons, and date format strings. Wrap the Gantt tree with the `<Locale>` component from `@svar-ui/svelte-core` to apply a locale.
+
+## Built-in locales
+
+Two locales ship out of the box:
+
+| Import | Language |
+|--------|----------|
+| `import { en } from "@svar-ui/gantt-locales"` | English (default) |
+| `import { cn } from "@svar-ui/gantt-locales"` | Chinese (Simplified) |
+
+Each locale package exports only the Gantt-specific strings. For full UI coverage you also need the matching locale from `@svar-ui/core-locales`:
+
+```javascript
+import { cn }     from "@svar-ui/gantt-locales";
+import { cn as cnCore } from "@svar-ui/core-locales";
+
+// Merge both sets before passing to <Locale>
+const words = { ...cn, ...cnCore };
+```
+
+## Applying a locale
+
+Wrap every component that participates in the Gantt UI (Toolbar, ContextMenu, Editor) inside `<Locale words={...}>`. Without the wrapper, components use the default English strings.
+
+```svelte
+<script>
+  import { Gantt, ContextMenu, Toolbar, Editor } from "@svar-ui/svelte-gantt";
+  import { Locale } from "@svar-ui/svelte-core";
+  import { cn }       from "@svar-ui/gantt-locales";
+  import { cn as cnCore } from "@svar-ui/core-locales";
+
+  let api = $state();
+
+  const settings = { tasks, links, scales, zoom: true };
+</script>
+
+<Locale words={{ ...cn, ...cnCore }}>
+  <Toolbar {api} />
+  <div class="gtcell">
+    <ContextMenu {api}>
+      <Gantt {...settings} bind:this={api} />
+    </ContextMenu>
+    <Editor {api} />
+  </div>
+</Locale>
+```
+
+### Switching locale at runtime
+
+Because `<Locale>` is a Svelte component, simply re-render it with different words to switch language dynamically:
+
+```svelte
+<script>
+  import { Gantt, ContextMenu, Toolbar, Editor } from "@svar-ui/svelte-gantt";
+  import { Locale } from "@svar-ui/svelte-core";
+  import { cn }       from "@svar-ui/gantt-locales";
+  import { cn as cnCore } from "@svar-ui/core-locales";
+
+  let lang = $state("en");
+  let api  = $state();
+
+  const settings = { tasks, links, scales, zoom: true };
+</script>
+
+<select bind:value={lang}>
+  <option value="en">English</option>
+  <option value="cn">Chinese</option>
+</select>
+
+{#if lang === "en"}
+  <Toolbar {api} />
+  <ContextMenu {api}>
+    <Gantt {...settings} bind:this={api} />
+  </ContextMenu>
+  <Editor {api} />
+{/if}
+
+{#if lang === "cn"}
+  <Locale words={{ ...cn, ...cnCore }}>
+    <Toolbar {api} />
+    <ContextMenu {api}>
+      <Gantt {...settings} bind:this={api} />
+    </ContextMenu>
+    <Editor {api} />
+  </Locale>
+{/if}
+```
+
+## Locale structure
+
+A Gantt locale is a plain object keyed under `gantt`. All string values are the translated labels:
+
+```javascript
+// English locale (en.js)
+export default {
+  gantt: {
+    // Grid column headers
+    "Task name":   "Task name",
+    "Start date":  "Start date",
+    "Add task":    "Add task",
+    Duration:      "Duration",
+
+    // Task types
+    Task:          "Task",
+    Milestone:     "Milestone",
+    "Summary task": "Summary task",
+
+    // Editor / sidebar
+    Save:          "Save",
+    Delete:        "Delete",
+    Name:          "Name",
+    Description:   "Description",
+    "Select type": "Select type",
+    Type:          "Type",
+    "End date":    "End date",
+    Progress:      "Progress",
+    Predecessors:  "Predecessors",
+    Successors:    "Successors",
+
+    // Link types
+    "End-to-start":   "End-to-start",
+    "Start-to-start": "Start-to-start",
+    "End-to-end":     "End-to-end",
+    "Start-to-end":   "Start-to-end",
+
+    // Context menu / toolbar
+    Add:       "Add",
+    "Child task":  "Child task",
+    "Task above":  "Task above",
+    "Task below":  "Task below",
+    "Convert to":  "Convert to",
+    Edit:          "Edit",
+    Cut:           "Cut",
+    Copy:          "Copy",
+    Paste:         "Paste",
+    Move:          "Move",
+    Up:            "Up",
+    Down:          "Down",
+    Indent:        "Indent",
+    Outdent:       "Outdent",
+    "Split task":  "Split task",
+    Segment:       "Segment",
+
+    // Toolbar actions
+    "New task":  "New task",
+    "Move up":   "Move up",
+    "Move down": "Move down",
+    Undo:        "Undo",
+    Redo:        "Redo",
+
+    // Scale labels
+    Week: "Week",
+    Q:    "Quarter",
+  },
+};
+```
+
+## Chinese locale
+
+The built-in Chinese locale follows the same structure with translated values:
+
+```javascript
+// Chinese locale (cn.js)
+export default {
+  gantt: {
+    "Task name":  "任务名称",
+    "Start date": "开始日期",
+    "Add task":   "添加任务",
+    Duration:     "期间",
+    Task:         "任务",
+    Milestone:    "里程碑",
+    "Summary task": "总结任务",
+    Save:         "保存",
+    Delete:       "删除",
+    // ... (full list mirrors the English locale structure)
+    Undo:         "撤銷",
+    Redo:         "重做",
+    Week:         "星期",
+    Q:            "季度",
+  },
+};
+```
+
+## Creating a custom locale
+
+Copy the English locale object and replace all values with your translations:
+
+```javascript
+// locales/de.js — German example
+export default {
+  gantt: {
+    "Task name":   "Aufgabenname",
+    "Start date":  "Startdatum",
+    "Add task":    "Aufgabe hinzufügen",
+    Duration:      "Dauer",
+    Task:          "Aufgabe",
+    Milestone:     "Meilenstein",
+    "Summary task": "Sammelvorgang",
+    Save:          "Speichern",
+    Delete:        "Löschen",
+    Name:          "Name",
+    Description:   "Beschreibung",
+    "Select type": "Typ auswählen",
+    Type:          "Typ",
+    "End date":    "Enddatum",
+    Progress:      "Fortschritt",
+    Predecessors:  "Vorgänger",
+    Successors:    "Nachfolger",
+    "End-to-start":   "Ende-Anfang",
+    "Start-to-start": "Anfang-Anfang",
+    "End-to-end":     "Ende-Ende",
+    "Start-to-end":   "Anfang-Ende",
+    Add:           "Hinzufügen",
+    Edit:          "Bearbeiten",
+    Cut:           "Ausschneiden",
+    Copy:          "Kopieren",
+    Paste:         "Einfügen",
+    Undo:          "Rückgängig",
+    Redo:          "Wiederholen",
+    Week:          "Woche",
+    Q:             "Quartal",
+    // ... add remaining keys
+  },
+};
+```
+
+Then use it the same way as any built-in locale:
+
+```svelte
+<script>
+  import de from "./locales/de.js";
+  import { Locale } from "@svar-ui/svelte-core";
+</script>
+
+<Locale words={de}>
+  <Gantt ... />
+</Locale>
+```
+
+<Tip>
+If you only need to override a few strings, spread the English locale and override individual keys:
+
+```javascript
+import { en } from "@svar-ui/gantt-locales";
+const custom = { gantt: { ...en.gantt, "Add task": "Create task" } };
+```
+</Tip>

@@ -1,0 +1,116 @@
+---
+title: ContextMenu
+description: API reference for the ContextMenu component, which adds a right-click context menu to the Gantt chart.
+---
+
+The `ContextMenu` component wraps the `Gantt` component and intercepts right-click events on tasks. It presents a menu of task actions (add, edit, delete, move, convert, etc.) and dispatches them to the Gantt via the shared `api` object.
+
+## Import
+
+```typescript
+import { ContextMenu } from "@svar-ui/svelte-gantt";
+```
+
+## Basic usage
+
+Wrap the `Gantt` component with `ContextMenu` and pass the same `api` reference to both:
+
+```svelte
+<script>
+  import { Gantt, ContextMenu, Editor } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<ContextMenu {api}>
+  <Gantt
+    bind:this={api}
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+  />
+</ContextMenu>
+<Editor {api} />
+```
+
+## Props
+
+<ParamField path="api" type="IApi" required>
+  The Gantt API object. Obtain it by binding `this` on the `Gantt` component. The context menu uses this reference to dispatch task actions when a menu item is selected.
+
+  ```svelte
+  <script>
+    let api = $state();
+  </script>
+
+  <ContextMenu {api}>
+    <Gantt bind:this={api} tasks={[]} scales={[]} />
+  </ContextMenu>
+  ```
+</ParamField>
+
+<ParamField path="items" type="IOptionConfig[]">
+  Array of menu option definitions that override the default menu. When omitted, the default set of options is used.
+
+  ```typescript
+  interface IOptionConfig {
+    id?: TID;
+    separator?: boolean;
+    text?: string;
+    icon?: string;
+    type?: string;
+    subtext?: string;
+    data?: IOptionConfig[];  // sub-menu items
+    isDisabled?: (task: IParsedTask, state: IData, target?: TID | IDataHash) => boolean;
+    isHidden?:   (task: IParsedTask, state: IData, target?: TID | IDataHash) => boolean;
+  }
+  ```
+</ParamField>
+
+<ParamField path="children" type="Snippet">
+  The `Gantt` component (or any other content) to wrap. The context menu attaches its listener to the content inside this slot.
+</ParamField>
+
+## Default menu items
+
+| ID | Label | Notes |
+|---|---|---|
+| `add-task` | Add | Sub-menu: Child task, Task above, Task below |
+| *(separator)* | — | — |
+| `convert-task` | Convert to | Sub-menu: built from `taskTypes` |
+| `edit-task` | Edit | Hidden for segments |
+| *(separator)* | — | — |
+| `cut-task` | Cut | Ctrl+X |
+| `copy-task` | Copy | Ctrl+C |
+| `paste-task` | Paste | Ctrl+V |
+| `move-task` | Move | Sub-menu: Up, Down |
+| *(separator)* | — | — |
+| `indent-task:add` | Indent | — |
+| `indent-task:remove` | Outdent | — |
+| *(separator)* | — | — |
+| `delete-task` | Delete | Ctrl+D / Backspace |
+
+## Customising menu items
+
+Replace the default menu with a minimal set:
+
+```svelte
+<script>
+  import { Gantt, ContextMenu } from "@svar-ui/svelte-gantt";
+
+  let api = $state();
+
+  const items = [
+    { id: "edit-task",   text: "Edit",   icon: "wxi-edit" },
+    { id: "delete-task", text: "Delete", icon: "wxi-delete" },
+  ];
+</script>
+
+<ContextMenu {api} {items}>
+  <Gantt bind:this={api} tasks={[]} scales={[]} />
+</ContextMenu>
+```
+
+<Tip>Import `defaultMenuOptions` from `@svar-ui/svelte-gantt` and spread it to extend the built-in menu rather than replacing it entirely.</Tip>

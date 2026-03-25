@@ -1,0 +1,107 @@
+---
+title: "ILink"
+description: "Type definition for a task dependency link"
+---
+
+The `ILink` interface defines a dependency link between two tasks. Links are rendered as arrows on the Gantt chart and can represent four types of task relationships.
+
+## TypeScript definition
+
+```typescript
+export interface ILink {
+  id?: TID;
+  source: TID;
+  target: TID;
+  type: TLinkType;
+  lag?: number;
+}
+
+export type TLinkType = "s2s" | "s2e" | "e2s" | "e2e";
+export type TID = string | number;
+```
+
+## Fields
+
+<ParamField body="id" type="string | number">
+  Unique identifier for the link. Auto-generated if omitted when adding a link via `api.exec("add-link", ...)`.
+</ParamField>
+
+<ParamField body="source" type="string | number" required>
+  ID of the predecessor (source) task — the task that the dependent task follows.
+</ParamField>
+
+<ParamField body="target" type="string | number" required>
+  ID of the successor (target) task — the task that depends on the source.
+</ParamField>
+
+<ParamField body="type" type="s2s" required>
+  The link type, describing which endpoints of the source and target tasks are connected. See [Link types](#link-types) below.
+</ParamField>
+
+<ParamField body="lag" type="number">
+  A time offset in `durationUnit` units (days by default). A positive `lag` introduces a delay between the two tasks. A negative value represents lead time (overlap). Defaults to `0`.
+</ParamField>
+
+## Link types
+
+The four link types define the dependency relationship using the start (`s`) and end (`e`) points of the source and target tasks.
+
+| Type | Meaning | Description |
+|------|---------|-------------|
+| `e2s` | End-to-Start | Target starts after source ends. The most common type. |
+| `s2s` | Start-to-Start | Target starts when source starts. |
+| `e2e` | End-to-End | Target ends when source ends. |
+| `s2e` | Start-to-End | Target ends when source starts. Rarely used. |
+
+```
+e2s (End-to-Start)       s2s (Start-to-Start)
+[Source -------]         [Source -------]
+               [Target--]  [Target------]
+
+e2e (End-to-End)         s2e (Start-to-End)
+[Source -------]             [Source -------]
+        [Target-]  [Target--]
+```
+
+<Note>
+  The default link type when creating a link by dragging in the UI is `e2s`.
+</Note>
+
+## Examples
+
+<Tabs>
+  <Tab title="End-to-Start link">
+    ```typescript
+    const link: ILink = {
+      id: 1,
+      source: 10,
+      target: 20,
+      type: "e2s"
+    };
+    ```
+  </Tab>
+  <Tab title="With lag">
+    ```typescript
+    // Target task starts 2 days after source ends
+    const link: ILink = {
+      id: 2,
+      source: 10,
+      target: 20,
+      type: "e2s",
+      lag: 2
+    };
+    ```
+  </Tab>
+  <Tab title="Adding a link via API">
+    ```typescript
+    api.exec("add-link", {
+      link: {
+        source: 10,
+        target: 20,
+        type: "e2s",
+        lag: 0
+      }
+    });
+    ```
+  </Tab>
+</Tabs>

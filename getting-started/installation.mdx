@@ -1,0 +1,159 @@
+---
+title: "Installation"
+description: "Install SVAR Svelte Gantt in your Svelte project using npm, yarn, or pnpm."
+---
+
+## Prerequisites
+
+SVAR Svelte Gantt 2.x requires **Svelte 5**. If you are on Svelte 4, see the [Svelte 4 note](#svelte-4) below.
+
+## Install the package
+
+<CodeGroup>
+
+```bash npm
+npm install @svar-ui/svelte-gantt
+```
+
+```bash yarn
+yarn add @svar-ui/svelte-gantt
+```
+
+```bash pnpm
+pnpm add @svar-ui/svelte-gantt
+```
+
+</CodeGroup>
+
+## Svelte 4
+
+There are two published versions of SVAR Svelte Gantt:
+
+| Version | Target | Package |
+|---------|--------|---------|
+| 2.x (current) | Svelte 5 | `@svar-ui/svelte-gantt` |
+| 1.x | Svelte 4 | `wx-svelte-gantt@1.2.0` |
+
+To use the Svelte 4 version:
+
+<CodeGroup>
+
+```bash npm
+npm install wx-svelte-gantt@1.2.0
+```
+
+```bash yarn
+yarn add wx-svelte-gantt@1.2.0
+```
+
+```bash pnpm
+pnpm add wx-svelte-gantt@1.2.0
+```
+
+</CodeGroup>
+
+<Note>
+  This documentation covers 2.x (Svelte 5). If you are on Svelte 4, use `wx-svelte-gantt@1.2.0`.
+</Note>
+
+## What is included
+
+The package exports the following components and utilities:
+
+| Export | Type | Description |
+|--------|------|-------------|
+| `Gantt` | Component | The main Gantt chart component |
+| `Toolbar` | Component | Optional toolbar with built-in actions |
+| `Editor` | Component | Task edit form |
+| `ContextMenu` | Component | Right-click context menu |
+| `Tooltip` | Component | Custom tooltip wrapper |
+| `HeaderMenu` | Component | Grid column header menu |
+| `Willow` | Theme | Default light theme wrapper |
+| `Material` | Theme | Material design theme wrapper |
+| `WillowDark` | Theme | Dark theme wrapper |
+| `version` | string | Current package version string |
+| `defaultEditorItems` | Array | Default editor field configuration |
+| `defaultToolbarButtons` | Array | Default toolbar button configuration |
+| `defaultMenuOptions` | Array | Default context menu options |
+| `defaultColumns` | Array | Default grid column definitions |
+| `defaultTaskTypes` | Array | Default task type definitions |
+| `getEditorItems()` | Function | Returns editor items merged with config |
+| `getToolbarButtons()` | Function | Returns toolbar buttons merged with config |
+| `getMenuOptions()` | Function | Returns menu options merged with config |
+| `registerScaleUnit()` | Function | Register a custom time scale unit |
+| `registerEditorItem()` | Function | Register a custom editor field component |
+
+## Theme setup
+
+SVAR Svelte Gantt ships with three themes: `Willow` (light), `WillowDark` (dark), and `Material`. Each theme is a Svelte component that wraps your Gantt instance and injects the required CSS custom properties.
+
+Wrap your `<Gantt>` component in a theme wrapper:
+
+```svelte
+<script>
+  import { Gantt, Willow } from "@svar-ui/svelte-gantt";
+</script>
+
+<Willow>
+  <Gantt {tasks} {links} {scales} />
+</Willow>
+```
+
+To use a different theme, swap the wrapper:
+
+<Tabs>
+  <Tab title="Willow (light)">
+
+```svelte
+<script>
+  import { Gantt, Willow } from "@svar-ui/svelte-gantt";
+</script>
+
+<Willow>
+  <Gantt {tasks} {links} {scales} />
+</Willow>
+```
+
+  </Tab>
+  <Tab title="WillowDark">
+
+```svelte
+<script>
+  import { Gantt, WillowDark } from "@svar-ui/svelte-gantt";
+</script>
+
+<WillowDark>
+  <Gantt {tasks} {links} {scales} />
+</WillowDark>
+```
+
+  </Tab>
+  <Tab title="Material">
+
+```svelte
+<script>
+  import { Gantt, Material } from "@svar-ui/svelte-gantt";
+</script>
+
+<Material>
+  <Gantt {tasks} {links} {scales} />
+</Material>
+```
+
+  </Tab>
+</Tabs>
+
+<Tip>
+  You can also apply a theme using CSS class names directly on a container element if you prefer not to use the wrapper components. See [Theming](/guides/theming) for details.
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/getting-started/quickstart">
+    Build a working Gantt chart in minutes with a step-by-step guide.
+  </Card>
+  <Card title="Tasks and links" icon="list-check" href="/configuration/tasks-and-links">
+    Learn the data structures for tasks, links, and milestones.
+  </Card>
+</CardGroup>

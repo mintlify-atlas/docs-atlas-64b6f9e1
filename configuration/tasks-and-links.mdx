@@ -1,0 +1,231 @@
+---
+title: Tasks and Links
+description: Configure the tasks and dependency links displayed in the Gantt chart.
+---
+
+The two primary data props on the `<Gantt>` component are `tasks` and `links`. `tasks` defines the work items rendered as bars in the chart, while `links` defines dependency arrows between those bars.
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  const tasks = [
+    {
+      id: 1,
+      text: "Project planning",
+      progress: 40,
+      parent: 0,
+      type: "summary",
+      open: true,
+      details: "Outline the project's scope and resources.",
+    },
+    {
+      id: 10,
+      start: new Date(2026, 3, 2),
+      duration: 3,
+      text: "Marketing analysis",
+      progress: 100,
+      parent: 1,
+      type: "task",
+    },
+    {
+      id: 11,
+      start: new Date(2026, 3, 5),
+      duration: 2,
+      text: "Discussions",
+      progress: 72,
+      parent: 1,
+      type: "task",
+    },
+    {
+      id: 5,
+      start: new Date(2026, 4, 3),
+      text: "Release 1.0.0",
+      progress: 0,
+      parent: 0,
+      type: "milestone",
+    },
+  ];
+
+  const links = [
+    { id: 1, source: 10, target: 11, type: "e2s" },
+    { id: 2, source: 11, target: 5,  type: "e2s" },
+  ];
+
+  const scales = [
+    { unit: "month", step: 1, format: "%F %Y" },
+    { unit: "day",   step: 1, format: "%j" },
+  ];
+</script>
+
+<Gantt {tasks} {links} {scales} />
+```
+
+## ITask fields
+
+<ParamField path="id" type="number | string">
+  Unique identifier for the task. When omitted, an id is generated automatically. All
+  `parent` references and link `source`/`target` values must match task `id`s.
+</ParamField>
+
+<ParamField path="text" type="string">
+  Label displayed inside the task bar and in the grid's task-name column.
+</ParamField>
+
+<ParamField path="start" type="Date">
+  Start date/time of the task. Required for regular tasks and milestones. Summary tasks
+  derive their start from child tasks when omitted.
+</ParamField>
+
+<ParamField path="end" type="Date">
+  End date/time of the task. You can supply either `end` or `duration` — not both.
+  Milestones use `start` only; `end` is ignored.
+</ParamField>
+
+<ParamField path="duration" type="number">
+  Duration expressed in the current `durationUnit` (default: days). Used as an alternative
+  to `end`. When both are provided, `end` takes precedence.
+</ParamField>
+
+<ParamField path="progress" type="number">
+  Completion percentage from `0` to `100`. Renders a progress fill inside the bar.
+</ParamField>
+
+<ParamField path="type" type="'task' | 'summary' | 'milestone' | string" default="task">
+  Visual type of the task. Built-in values are `"task"`, `"summary"`, and `"milestone"`.
+  Custom types can be added via the `taskTypes` prop.
+</ParamField>
+
+<ParamField path="parent" type="number | string" default="0">
+  ID of the parent task. Use `0` (or omit) for root-level tasks. Nesting tasks under a
+  `summary` parent creates a collapsible hierarchy.
+</ParamField>
+
+<ParamField path="open" type="boolean" default="false">
+  When `true`, the task's children are expanded on initial render. Only meaningful for
+  summary-type tasks that have children.
+</ParamField>
+
+<ParamField path="details" type="string">
+  Optional description shown in the task editor panel.
+</ParamField>
+
+<ParamField path="unscheduled" type="boolean" default="false">
+  When `true`, the task has no fixed dates. It appears in the grid but not on the chart
+  timeline. Requires `unscheduledTasks={true}` on the `<Gantt>` component.
+</ParamField>
+
+<ParamField path="rollup" type="boolean" default="false">
+  When `true`, the task bar is rolled up and displayed inside its parent summary bar.
+  Requires the `rollups` prop on the `<Gantt>` component.
+</ParamField>
+
+<ParamField path="segments" type="Partial<ITask>[]">
+  Splits the task into multiple non-contiguous segments. Each segment can override
+  `start`, `duration`, and `text`. Requires `splitTasks={true}` on the `<Gantt>` component.
+
+  ```javascript
+  segments: [
+    { start: new Date(2026, 3, 2), duration: 1, text: "Part A" },
+    { start: new Date(2026, 3, 4), duration: 2, text: "Part B" },
+  ]
+  ```
+</ParamField>
+
+<ParamField path="base_start" type="Date">
+  Baseline start date used for comparison against the actual `start`. Shown as a
+  separate indicator when `baselines={true}` is set on the `<Gantt>` component.
+</ParamField>
+
+<ParamField path="base_end" type="Date">
+  Baseline end date, paired with `base_start`. Shown when `baselines={true}`.
+</ParamField>
+
+## Hierarchical tasks
+
+Tasks form a tree by setting the `parent` field to another task's `id`. Any task that has
+children should use `type: "summary"`. Set `open: true` to expand children on load.
+
+```javascript
+const tasks = [
+  // Root summary task
+  {
+    id: 1,
+    text: "Development",
+    progress: 2,
+    parent: 0,
+    type: "summary",
+    open: true,
+  },
+  // Child tasks — parent matches id 1
+  {
+    id: 30,
+    start: new Date(2026, 3, 9),
+    duration: 6,
+    text: "Prototyping",
+    progress: 7,
+    parent: 1,
+    type: "task",
+  },
+  {
+    id: 31,
+    start: new Date(2026, 3, 15),
+    duration: 8,
+    text: "Basic functionality",
+    progress: 0,
+    parent: 1,
+    type: "task",
+  },
+];
+```
+
+Summary tasks automatically derive their date range from their children unless explicit
+`start`/`end` values are provided.
+
+## ILink fields
+
+<ParamField path="id" type="number | string">
+  Unique identifier for the link. Generated automatically when omitted.
+</ParamField>
+
+<ParamField path="source" type="number | string" required>
+  ID of the task where the dependency arrow originates.
+</ParamField>
+
+<ParamField path="target" type="number | string" required>
+  ID of the task where the dependency arrow points.
+</ParamField>
+
+<ParamField path="type" type="'e2s' | 's2s' | 's2e' | 'e2e'" required>
+  Dependency type. Controls which ends of the source and target bars the arrow connects.
+
+  | Value | Meaning |
+  |---|---|
+  | `"e2s"` | End-to-Start — target starts after source ends (most common) |
+  | `"s2s"` | Start-to-Start — target starts when source starts |
+  | `"s2e"` | Start-to-End — target ends when source starts |
+  | `"e2e"` | End-to-End — target ends when source ends |
+</ParamField>
+
+<ParamField path="lag" type="number">
+  Delay (in days) between the source event and the target event. A positive value adds
+  a gap; a negative value creates overlap (lead time).
+</ParamField>
+
+### Link type examples
+
+```javascript
+const links = [
+  // Most common: task 10 must finish before task 11 starts
+  { id: 1, source: 10, target: 11, type: "e2s" },
+
+  // Both tasks must start at the same time
+  { id: 2, source: 1,  target: 3,  type: "s2s" },
+
+  // task 5 must start before task 3 can end
+  { id: 3, source: 5,  target: 6,  type: "s2e" },
+
+  // task 8 must finish 2 days after task 6 finishes (lag)
+  { id: 4, source: 6,  target: 8,  type: "e2e", lag: 2 },
+];
+```

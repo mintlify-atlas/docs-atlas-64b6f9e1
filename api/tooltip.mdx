@@ -1,0 +1,114 @@
+---
+title: Tooltip
+description: API reference for the Tooltip component, which shows task information on hover.
+---
+
+The `Tooltip` component wraps the `Gantt` component and displays a floating tooltip when the user hovers over a task bar. You can use the built-in tooltip or supply a custom Svelte component for the tooltip content.
+
+## Import
+
+```typescript
+import { Tooltip } from "@svar-ui/svelte-gantt";
+```
+
+## Basic usage
+
+Wrap the `Gantt` component with `Tooltip`:
+
+```svelte
+<script>
+  import { Gantt, Tooltip } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<Tooltip {api}>
+  <Gantt
+    bind:this={api}
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+  />
+</Tooltip>
+```
+
+## Props
+
+<ParamField path="api" type="IApi" required>
+  The Gantt API object. Obtain it by binding `this` on the `Gantt` component. The tooltip uses this reference to look up task data when the user hovers over a bar.
+
+  ```svelte
+  <script>
+    let api = $state();
+  </script>
+
+  <Tooltip {api}>
+    <Gantt bind:this={api} tasks={[]} scales={[]} />
+  </Tooltip>
+  ```
+</ParamField>
+
+<ParamField path="content" type="Component<{ data: ITask }>">
+  A custom Svelte component used to render the tooltip body. When omitted, the built-in tooltip design is used.
+
+  The component receives a single `data` prop of type `ITask` — the task currently being hovered.
+
+  ```typescript
+  interface ITask {
+    id?: TID;
+    text?: string;
+    start?: Date;
+    end?: Date;
+    duration?: number;
+    type?: TTaskType;
+    progress?: number;
+    [key: string]: any;
+  }
+  ```
+</ParamField>
+
+<ParamField path="children" type="Snippet">
+  The `Gantt` component to wrap. The tooltip attaches its hover listener to the content inside this slot.
+</ParamField>
+
+## Custom tooltip content
+
+Create a Svelte component that accepts `data` as a prop:
+
+```svelte
+<!-- MyTooltip.svelte -->
+<script>
+  import { format } from "date-fns";
+  let { data } = $props();
+</script>
+
+{#if data}
+  <div class="tooltip">
+    <strong>{data.text}</strong>
+    <div>Start: {format(data.start, "yyyy-MM-dd")}</div>
+    {#if data.end}
+      <div>End: {format(data.end, "yyyy-MM-dd")}</div>
+    {/if}
+  </div>
+{/if}
+```
+
+Then pass it as the `content` prop:
+
+```svelte
+<!-- App.svelte -->
+<script>
+  import { Gantt, Tooltip } from "@svar-ui/svelte-gantt";
+  import MyTooltip from "./MyTooltip.svelte";
+
+  let api = $state();
+</script>
+
+<Tooltip {api} content={MyTooltip}>
+  <Gantt bind:this={api} tasks={[]} scales={[]} />
+</Tooltip>
+```
+
+<Note>The custom content component receives `data` as a reactive prop. The component mounts and unmounts with the tooltip, so you do not need to guard against `null` in the surrounding template — but the `{#if data}` guard shown above is still good practice.</Note>

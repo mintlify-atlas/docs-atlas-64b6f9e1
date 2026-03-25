@@ -1,0 +1,99 @@
+---
+title: HeaderMenu
+description: API reference for the HeaderMenu component, which adds a right-click column visibility menu to the Gantt grid header.
+---
+
+The `HeaderMenu` component wraps the `Gantt` component and adds a right-click context menu to the grid header row. Users can toggle column visibility from this menu.
+
+## Import
+
+```typescript
+import { HeaderMenu } from "@svar-ui/svelte-gantt";
+```
+
+## Basic usage
+
+Wrap the `Gantt` component with `HeaderMenu`:
+
+```svelte
+<script>
+  import { Gantt, HeaderMenu } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<HeaderMenu {api}>
+  <Gantt
+    bind:this={api}
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+  />
+</HeaderMenu>
+```
+
+Right-click the grid header to open the column visibility menu.
+
+## Props
+
+<ParamField path="api" type="IApi" required>
+  The Gantt API object. Obtain it by binding `this` on the `Gantt` component. The header menu uses this reference to read the current column configuration and dispatch visibility changes.
+
+  ```svelte
+  <script>
+    let api = $state();
+  </script>
+
+  <HeaderMenu {api}>
+    <Gantt bind:this={api} tasks={[]} scales={[]} />
+  </HeaderMenu>
+  ```
+</ParamField>
+
+<ParamField path="columns" type="Record<string, boolean> | null" default="null">
+  An object that controls which columns can be hidden by the user. The keys are column IDs and the values are `true` to allow hiding that column.
+
+  When set to `null` (the default), all columns are hidable.
+
+  ```svelte
+  <script>
+    import { Gantt, HeaderMenu } from "@svar-ui/svelte-gantt";
+
+    let api = $state();
+
+    // Only allow hiding the start and duration columns
+    const hidable = { start: true, duration: true };
+  </script>
+
+  <HeaderMenu {api} columns={hidable}>
+    <Gantt bind:this={api} tasks={[]} scales={[]} />
+  </HeaderMenu>
+  ```
+</ParamField>
+
+<ParamField path="children" type="Snippet">
+  The `Gantt` component to wrap. The header menu attaches its right-click listener to the grid header rendered inside this slot.
+</ParamField>
+
+## Restricting which columns can be hidden
+
+By default the menu lists every column. Pass a `columns` map to limit the list:
+
+```svelte
+<script>
+  import { Gantt, HeaderMenu } from "@svar-ui/svelte-gantt";
+
+  let api = $state();
+
+  // Only the "start" and "duration" columns appear in the menu
+  const hidable = { start: true, duration: true };
+</script>
+
+<HeaderMenu {api} columns={hidable}>
+  <Gantt bind:this={api} tasks={[]} scales={[]} />
+</HeaderMenu>
+```
+
+<Note>The `text` (Name) column is always visible and cannot be hidden via the menu regardless of the `columns` configuration.</Note>

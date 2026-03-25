@@ -1,0 +1,144 @@
+---
+title: Critical Path
+description: Highlight the longest dependency chain that determines the project end date, with strict and flexible calculation modes.
+---
+
+<Note>
+  Critical path analysis is a **PRO feature**. See [licensing and trial info](https://svar.dev/svelte/gantt/#pro).
+</Note>
+
+The critical path is the sequence of linked tasks whose total duration determines the earliest possible project completion date. Any delay on a critical path task directly delays the entire project. SVAR Gantt calculates and highlights the critical path automatically when the `criticalPath` prop is set.
+
+## The `criticalPath` Prop
+
+```typescript
+interface ICriticalPathConfig {
+  type: "strict" | "flexible";
+}
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `type` | `"strict" \| "flexible"` | Selects the calculation algorithm used to identify critical tasks. |
+
+## Strict vs Flexible Modes
+
+<Tabs>
+  <Tab title="Flexible (default)">
+    In `"flexible"` mode, a task is considered critical if it has **zero total slack** relative to the project end date. This means any delay to the task would push the project end date out.
+
+    This is the most common interpretation and matches the standard CPM (Critical Path Method) definition. Gaps in task chains are permitted as long as the chain still reaches the project end.
+  </Tab>
+  <Tab title="Strict">
+    In `"strict"` mode, a task is critical only if it is part of a **continuous, unbroken chain** from the project start to the project end with no slack at any point. Tasks that would be critical under flexible mode but have any scheduling gap are excluded.
+
+    Use strict mode when you want to surface only the tightest dependency chain.
+  </Tab>
+</Tabs>
+
+## How Critical Path is Calculated
+
+The algorithm requires `projectStart` and `projectEnd` to be defined on the `<Gantt>` component:
+
+1. A forward pass computes the **earliest start** and **earliest finish** for each task.
+2. A backward pass computes the **latest start** and **latest finish** working from `projectEnd`.
+3. **Total slack** = latest start − earliest start. Tasks with zero total slack are on the critical path.
+4. Critical tasks and their connecting links are marked and rendered in a distinct style (typically red).
+
+## Basic Example
+
+```svelte
+<script>
+  import { getData } from "../data";
+  import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+
+  const data = getData("critical");
+
+  let api = $state();
+  let pathMode = $state("flexible");
+  let projectStart = $state(new Date(2026, 3, 2));
+  let projectEnd = $state(new Date(2026, 3, 12));
+
+  function init(ganttApi) {
+    api = ganttApi;
+  }
+</script>
+
+<Gantt
+  {init}
+  tasks={data.tasks}
+  links={data.links}
+  scales={data.scales}
+  criticalPath={{ type: pathMode }}
+  {projectStart}
+  {projectEnd}
+/>
+<Editor {api} />
+```
+
+## Switching Modes at Runtime
+
+Because `criticalPath` is a reactive prop, you can switch between `"strict"` and `"flexible"` at runtime — for example, from a toolbar control — and the chart updates immediately:
+
+```svelte
+<script>
+  let pathMode = $state("flexible");
+</script>
+
+<select bind:value={pathMode}>
+  <option value="flexible">Flexible</option>
+  <option value="strict">Strict</option>
+</select>
+
+<Gantt
+  criticalPath={{ type: pathMode }}
+  {projectStart}
+  {projectEnd}
+  ...
+/>
+```
+
+## Slack Visualization
+
+Alongside the critical path, the PRO edition can display **slack** — the amount of scheduling float each non-critical task has before it would become critical. Enable it with the `slack` prop:
+
+```svelte
+<Gantt
+  slack
+  criticalPath={{ type: "flexible" }}
+  {projectStart}
+  {projectEnd}
+  ...
+/>
+```
+
+Slack values (`freeSlack`, `totalSlack`, `earliestStart`, `latestStart`) are accessible on each task via `task.slack` and can be displayed as custom grid columns:
+
+```svelte
+<script>
+  const columns = [
+    { id: "text", header: "Task name", width: 150 },
+    {
+      id: "freeSlack",
+      header: "Free slack",
+      align: "center",
+      width: 100,
+      getter: t => t.slack.freeSlack,
+      template: v => v ?? "-",
+    },
+    {
+      id: "totalSlack",
+      header: "Total slack",
+      align: "center",
+      width: 100,
+      getter: t => t.slack.totalSlack,
+    },
+  ];
+</script>
+
+<Gantt {columns} slack {projectStart} {projectEnd} ... />
+```
+
+<Tip>
+  Critical path analysis is most meaningful when combined with [Auto-Scheduling](/pro/auto-scheduling) so that task dates stay consistent with the dependency chain.
+</Tip>

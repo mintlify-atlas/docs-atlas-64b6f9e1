@@ -1,0 +1,133 @@
+---
+title: Baselines
+description: Display original planned dates alongside current task bars to track schedule deviations over time.
+---
+
+<Note>
+  Baselines are a **PRO feature**. See [licensing and trial info](https://svar.dev/svelte/gantt/#pro).
+</Note>
+
+Baselines let you compare the current schedule against an original plan. When enabled, each task renders a secondary bar beneath the main task bar showing where the task was originally planned to start and end. This makes schedule slippage immediately visible.
+
+## The `baselines` Prop
+
+Set `baselines={true}` on the `<Gantt>` component to enable baseline rendering:
+
+```svelte
+<Gantt baselines={true} tasks={data.tasks} links={data.links} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `baselines` | `boolean` | `false` | When `true`, baseline bars are drawn below each task bar that has baseline data. |
+
+## Baseline Fields on Tasks
+
+Baseline data is stored directly on each task object using three reserved fields:
+
+```typescript
+interface ITask {
+  // ... standard fields ...
+  base_start?: Date;     // original planned start date
+  base_end?: Date;       // original planned end date
+  base_duration?: number; // original planned duration (in the configured duration unit)
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `base_start` | `Date` | The original planned start date for the task. |
+| `base_end` | `Date` | The original planned end date for the task. |
+| `base_duration` | `number` | The original planned duration. Used when editing via the task editor. |
+
+<Info>
+  A task only renders a baseline bar if at least `base_start` and `base_end` are defined. Tasks without baseline fields display normally with no secondary bar.
+</Info>
+
+## Example Tasks with Baseline Data
+
+```javascript
+const tasks = [
+  {
+    id: 1,
+    text: "Design phase",
+    start: new Date(2026, 3, 5),   // current start — slipped by 3 days
+    end: new Date(2026, 3, 12),
+    base_start: new Date(2026, 3, 2),  // original planned start
+    base_end: new Date(2026, 3, 9),    // original planned end
+    base_duration: 7,
+    parent: 0,
+    type: "task",
+  },
+  {
+    id: 2,
+    text: "Development",
+    start: new Date(2026, 3, 12),
+    end: new Date(2026, 3, 24),
+    base_start: new Date(2026, 3, 9),
+    base_end: new Date(2026, 3, 21),
+    parent: 0,
+    type: "task",
+  },
+];
+```
+
+## Full Example
+
+```svelte
+<script>
+  import { getData } from "../data";
+  import { Gantt, Editor, getEditorItems } from "@svar-ui/svelte-gantt";
+
+  const data = getData("day", { baselines: true });
+  let api = $state();
+
+  // add baseline date fields to the editor form
+  const items = getEditorItems().flatMap(item =>
+    item.key === "links"
+      ? [
+          {
+            key: "base_start",
+            comp: "date",
+            label: "Baseline start",
+            config: { format: "%d-%m-%Y" },
+          },
+          {
+            key: "base_end",
+            comp: "date",
+            label: "Baseline end",
+            config: { format: "%d-%m-%Y" },
+          },
+          {
+            key: "base_duration",
+            comp: "counter",
+            hidden: true,
+          },
+          item,
+        ]
+      : item
+  );
+</script>
+
+<Gantt
+  bind:this={api}
+  baselines={true}
+  cellHeight={45}
+  tasks={data.tasks}
+  links={data.links}
+/>
+<Editor {api} {items} />
+```
+
+<Tip>
+  Increasing `cellHeight` (as shown above) gives baseline bars more vertical space so they are easy to distinguish from the main task bar.
+</Tip>
+
+## How Baselines Are Rendered
+
+- Each task row renders its main bar at the normal vertical position.
+- A second, smaller bar is drawn below it using the `base_start` and `base_end` values.
+- The baseline bar uses a distinct visual style (typically a muted/outlined style) so it is clearly differentiated from the current schedule.
+- Tasks with no baseline fields are unaffected and render as normal.
+
+Baselines can be combined with [Rollups](/pro/overview) — baseline bars are included in rollup rendering when both features are active simultaneously.

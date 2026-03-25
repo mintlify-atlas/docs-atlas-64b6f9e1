@@ -1,0 +1,144 @@
+---
+title: Columns
+description: Configure the grid columns displayed to the left of the Gantt chart.
+---
+
+The `columns` prop controls which columns appear in the grid panel on the left side of
+the Gantt chart. Pass an array of column definition objects, or set `columns={false}` to
+hide the grid entirely.
+
+## Default columns
+
+When the `columns` prop is omitted, the Gantt renders four built-in columns:
+
+```javascript
+[
+  { id: "text",     header: "Task name", flexgrow: 1, sort: true },
+  { id: "start",    header: "Start date", align: "center", sort: true },
+  { id: "duration", header: "Duration",   width: 100, align: "center", sort: true },
+  { id: "add-task", header: "Add task",   width: 50,  align: "center", sort: false, resize: false },
+]
+```
+
+## Hiding the grid
+
+Set `columns={false}` to render only the chart area with no grid panel.
+
+```svelte
+<Gantt {tasks} {links} {scales} columns={false} />
+```
+
+## Custom columns example
+
+The following example mirrors the fixed-width column layout from `GanttFixedColumns.svelte`:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  const columns = [
+    { id: "text",     header: "Task name",  width: 120 },
+    { id: "start",    header: "Start date", width: 120, align: "center" },
+    { id: "duration", header: "Duration",   width: 90,  align: "center" },
+    { id: "add-task", header: "Add task",   width: 50,  align: "center" },
+  ];
+</script>
+
+<Gantt {tasks} {links} {scales} {columns} />
+```
+
+You can also use custom Svelte components for cell rendering (from `GanttGrid.svelte`):
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+  import AvatarCell from "./AvatarCell.svelte";
+  import NameAndDateCell from "./NameAndDateCell.svelte";
+  import AddTaskCell from "./AddTaskCell.svelte";
+
+  const columns = [
+    { id: "text",     header: "Task",     width: 220, cell: NameAndDateCell },
+    { id: "assigned", header: "Assigned", width: 160, cell: AvatarCell },
+    {
+      id: "add-task",
+      header: { cell: AddTaskCell },
+      align: "center",
+      width: 80,
+    },
+  ];
+</script>
+
+<Gantt {tasks} {links} {scales} {columns} cellHeight={40} />
+```
+
+## IGanttColumn fields
+
+<ParamField path="id" type="string">
+  Column identifier. Built-in ids with special behaviour: `"text"` (task name with
+  indent), `"start"`, `"end"`, `"duration"`, `"add-task"` (button to add sibling tasks).
+  Any other string maps to a custom property on the task object.
+</ParamField>
+
+<ParamField path="header" type="string | object | Array">
+  Column header text, or an object/array for multi-row headers with filters.
+  Pass `{ cell: SvelteComponent }` to render a custom Svelte component as the header.
+
+  ```javascript
+  // Simple text header
+  header: "Task name"
+
+  // Header with filter
+  header: { text: "Task name", filter: "text" }
+
+  // Custom header component
+  header: { cell: AddTaskCell }
+  ```
+</ParamField>
+
+<ParamField path="width" type="number" default="120">
+  Column width in pixels. Ignored when `flexgrow` is set. The `"add-task"` column
+  defaults to `50`.
+</ParamField>
+
+<ParamField path="flexgrow" type="number">
+  CSS `flex-grow` factor. When set, the column expands to fill available space instead
+  of using a fixed `width`. The default `"text"` column uses `flexgrow: 1`.
+</ParamField>
+
+<ParamField path="align" type="'left' | 'right' | 'center'" default="left">
+  Horizontal alignment of cell content.
+</ParamField>
+
+<ParamField path="resize" type="boolean" default="true">
+  Whether the column can be resized by dragging its border. Set to `false` for
+  fixed-size utility columns such as `"add-task"`.
+</ParamField>
+
+<ParamField path="sort" type="boolean" default="true">
+  Whether clicking the header sorts the grid by this column. Defaults to `false` for
+  the `"add-task"` column.
+</ParamField>
+
+<ParamField path="template" type="(task: ITask) => string">
+  Function returning an HTML string rendered as the cell content. Use for simple text
+  transformations. For rich UI, prefer `cell` (a Svelte component).
+</ParamField>
+
+<ParamField path="cell" type="SvelteComponent">
+  A Svelte component rendered inside each data cell. The component receives the task
+  object as a prop. Takes priority over `template`.
+</ParamField>
+
+<ParamField path="editor" type="object | string | function">
+  Inline editor configuration activated when a cell is double-clicked. Pass an editor
+  type string (e.g. `"datepicker"`), an editor config object, or a function
+  `(task, column) => editorConfig | null` for conditional editing.
+
+  Date columns (`start`, `end`, `duration`) automatically disable editing for task types
+  where the field is not applicable (e.g. `end` is read-only on milestones).
+</ParamField>
+
+<ParamField path="getter" type="(task: object) => any">
+  Custom value extractor called when the column reads the task object. Useful when the
+  display value needs to be computed from multiple task fields.
+</ParamField>

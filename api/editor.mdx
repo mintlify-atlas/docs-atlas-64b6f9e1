@@ -1,0 +1,249 @@
+---
+title: Editor
+description: API reference for the Editor component, a side-panel form for creating and editing tasks.
+---
+
+The `Editor` component renders a slide-in panel that lets users view and edit task properties. It opens when `api.exec("show-editor", { id })` is called and closes when the user saves or cancels.
+
+## Import
+
+```typescript
+import { Editor } from "@svar-ui/svelte-gantt";
+```
+
+## Basic usage
+
+```svelte
+<script>
+  import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+
+  function init(ganttApi) {
+    api = ganttApi;
+    // Open the editor automatically when a new task is added
+    api.on("add-task", ({ id }) => {
+      api.exec("show-editor", { id });
+    });
+  }
+</script>
+
+<Gantt {init} tasks={data.tasks} links={data.links} scales={data.scales} />
+<Editor {api} />
+```
+
+## Props
+
+<ParamField path="api" type="IApi" required>
+  The Gantt API object. Obtain it by binding `this` on the `Gantt` component or via the `init` callback. The editor uses this reference to read the task being edited and persist changes.
+
+  ```svelte
+  <script>
+    let api = $state();
+  </script>
+
+  <Gantt bind:this={api} tasks={[]} scales={[]} />
+  <Editor {api} />
+  ```
+</ParamField>
+
+<ParamField path="items" type="TEditorItem[]">
+  Array of editor field definitions that override the default form layout. When omitted, the default set of fields is used.
+
+  ```typescript
+  type TEditorItem =
+    | TTextFieldShape
+    | TCounterShape
+    | TComboFieldShape
+    | TSliderShape
+    | TDateFieldShape
+    | TRadioShape
+    | ILinksShape
+    | ITwoStateShape
+    | TCheckboxShape;
+  ```
+
+  Every editor item shares a common base shape:
+
+  ```typescript
+  type TCommonShape = {
+    id?: TID;
+    key: string;      // task property key to bind
+    label?: string;
+    labelTemplate?: (value: any) => string;
+    config?: Record<string, any>;
+    isHidden?:   (task: Partial<ITask>) => boolean;
+    isDisabled?: (task: Partial<ITask>, state: IData) => boolean;
+    [key: string]: any;
+  };
+  ```
+</ParamField>
+
+## Editor field types
+
+Each item in `items` must include a `comp` field that selects the field component.
+
+<AccordionGroup>
+  <Accordion title="text / textarea">
+    Renders a single-line text input or multi-line textarea.
+
+    ```typescript
+    type TTextFieldShape = TCommonShape & {
+      comp: "text" | "textarea";
+    };
+    ```
+
+    ```javascript
+    { key: "text",    comp: "text",     label: "Name",        config: { placeholder: "Task name" } }
+    { key: "details", comp: "textarea", label: "Description", config: { placeholder: "Add description" } }
+    ```
+  </Accordion>
+
+  <Accordion title="date">
+    Renders a date picker. Set `time: true` to include a time selector.
+
+    ```typescript
+    type TDateFieldShape = TCommonShape & {
+      comp: "date";
+      time?: boolean;
+    };
+    ```
+
+    ```javascript
+    { key: "start", comp: "date", label: "Start date", config: { format: "%d-%m-%Y" } }
+    { key: "end",   comp: "date", label: "End date",   config: { format: "%d-%m-%Y" } }
+    ```
+  </Accordion>
+
+  <Accordion title="counter">
+    Renders a numeric stepper.
+
+    ```typescript
+    type TCounterShape = TCommonShape & {
+      comp: "counter";
+    };
+    ```
+
+    ```javascript
+    { key: "duration", comp: "counter", label: "Duration", config: { min: 1 } }
+    ```
+  </Accordion>
+
+  <Accordion title="slider">
+    Renders a range slider, typically used for progress.
+
+    ```typescript
+    type TSliderShape = TCommonShape & {
+      comp: "slider";
+    };
+    ```
+
+    ```javascript
+    { key: "progress", comp: "slider", label: "Progress", config: { min: 0, max: 100 } }
+    ```
+  </Accordion>
+
+  <Accordion title="select / combo / multiselect">
+    Renders a dropdown selector.
+
+    ```typescript
+    type TComboFieldShape = TCommonShape & {
+      comp: "combo" | "select" | "multiselect";
+      options?: { id: any; label: string }[];
+    };
+    ```
+
+    ```javascript
+    {
+      key: "type",
+      comp: "select",
+      label: "Type",
+      options: [
+        { id: "task",      label: "Task" },
+        { id: "milestone", label: "Milestone" },
+        { id: "summary",   label: "Summary" },
+      ],
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="radio">
+    Renders a group of radio buttons.
+
+    ```typescript
+    type TRadioShape = TCommonShape & {
+      comp: "radio";
+      options: { id: TID; label: string }[];
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="checkbox">
+    Renders a boolean checkbox.
+
+    ```typescript
+    type TCheckboxShape = TCommonShape & {
+      comp: "checkbox";
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="links">
+    Renders the dependency links editor panel.
+
+    ```typescript
+    type ILinksShape = TCommonShape & {
+      comp: "links";
+    };
+    ```
+
+    ```javascript
+    { key: "links", comp: "links", label: "" }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Default editor fields
+
+When no `items` prop is provided, the editor renders these fields:
+
+| Key | Component | Label | Hidden when |
+|---|---|---|---|
+| `text` | `text` | Name | — |
+| `details` | `textarea` | Description | — |
+| `type` | `select` | Type | Task is a segment |
+| `start` | `date` | Start date | Task is a summary |
+| `end` | `date` | End date | Task is a summary or milestone |
+| `duration` | `counter` | Duration | Task is a summary or milestone |
+| `progress` | `slider` | Progress | Task is a milestone or segment |
+| `links` | `links` | — | Task is a segment |
+
+## Custom editor fields
+
+Use `getEditorItems` to start from the defaults and extend them:
+
+```svelte
+<script>
+  import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+  import { getEditorItems } from "@svar-ui/svelte-gantt";
+
+  let api = $state();
+
+  const items = [
+    ...getEditorItems(),
+    { key: "priority", comp: "select", label: "Priority",
+      options: [
+        { id: "low",    label: "Low" },
+        { id: "medium", label: "Medium" },
+        { id: "high",   label: "High" },
+      ] },
+  ];
+</script>
+
+<Gantt bind:this={api} tasks={[]} scales={[]} />
+<Editor {api} {items} />
+```
+
+<Tip>Register fully custom field components with `registerEditorItem` from `@svar-ui/svelte-gantt`.</Tip>

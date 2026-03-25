@@ -1,0 +1,110 @@
+---
+title: Auto-Scheduling
+description: Automatically reschedule tasks based on Finish-to-Start dependency chains using the schedule prop.
+---
+
+<Note>
+  Auto-scheduling is a **PRO feature**. See [licensing and trial info](https://svar.dev/svelte/gantt/#pro).
+</Note>
+
+Auto-scheduling lets the Gantt automatically move tasks forward whenever an upstream task changes. When enabled, any task linked by a Finish-to-Start dependency is rescheduled so it starts no earlier than its predecessor ends. This removes the need to manually adjust dates throughout a dependency chain.
+
+## The `schedule` Prop
+
+Pass a `schedule` object to the `<Gantt>` component to configure scheduling behaviour.
+
+```typescript
+interface IScheduleConfig {
+  type?: "forward";  // scheduling direction — only forward mode is supported
+  auto?: boolean;    // when true, reschedules on every data change automatically
+}
+```
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `type` | `"forward"` | — | Scheduling algorithm. Only forward scheduling is available. |
+| `auto` | `boolean` | `false` | When `true`, tasks are rescheduled automatically on every change. |
+
+## The `summary` Prop
+
+The `summary` prop controls automated behaviour for summary (parent) tasks.
+
+```typescript
+interface ISummaryConfig {
+  autoProgress?: boolean;  // auto-calculate summary task progress from children
+  autoConvert?: boolean;   // auto-convert a task to a summary when children are added
+}
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `autoProgress` | `boolean` | Recalculates the `progress` of summary tasks based on child task progress. |
+| `autoConvert` | `boolean` | Automatically changes a task's `type` to `"summary"` when child tasks are added. |
+
+## Forward Scheduling Mode
+
+In forward scheduling mode (`type: "forward"`), the engine starts from the project start date and propagates task dates forward along the dependency chain:
+
+1. Tasks with no predecessors are placed at the `projectStart` date.
+2. Each Finish-to-Start (`e2s`) link causes the target task to start on or after the source task's end date.
+3. If `auto: true`, this recalculation runs on every task edit, drag, or resize.
+
+Links with a `lag` value are respected — the target task starts `lag` working days after the source ends (when a calendar is configured).
+
+## Basic Example
+
+The demo below enables auto-scheduling with a fixed project start date. Moving or resizing any task propagates the change through the dependency chain automatically.
+
+```svelte
+<script>
+  import { getData } from "../data";
+  import { Gantt, Editor, ContextMenu } from "@svar-ui/svelte-gantt";
+
+  let api = $state();
+  let projectStart = $state(new Date(2026, 3, 2));
+  const data = getData();
+</script>
+
+<Editor {api} />
+<ContextMenu {api}>
+  <Gantt
+    bind:this={api}
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+    schedule={{ auto: true }}
+    {projectStart}
+    projectEnd={new Date(2026, 5, 2)}
+  />
+</ContextMenu>
+```
+
+## How Finish-to-Start Scheduling Works
+
+When `schedule.auto` is `true`, every `e2s` (end-to-start) link is evaluated after each change:
+
+- The **source** task finishes at a calculated date.
+- The **target** task start is pushed to match or exceed the source end date.
+- The target's end date shifts by the same offset, preserving duration.
+- The cascade continues down the dependency chain recursively.
+
+<Tip>
+  Combine `schedule` with the [Calendar](/pro/calendar) prop so that scheduling respects working days and hours. Durations are measured in working time when a calendar is active.
+</Tip>
+
+## Controlling Project Bounds
+
+Use `projectStart` and `projectEnd` props to constrain the scheduling window:
+
+```svelte
+<Gantt
+  tasks={data.tasks}
+  links={data.links}
+  scales={data.scales}
+  schedule={{ auto: true }}
+  projectStart={new Date(2026, 3, 2)}
+  projectEnd={new Date(2026, 5, 2)}
+/>
+```
+
+Tasks will not be scheduled before `projectStart`. The `projectEnd` date is used by the [Critical Path](/pro/critical-path) engine to identify late tasks.

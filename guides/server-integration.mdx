@@ -1,0 +1,310 @@
+---
+title: Server Integration
+description: Connect SVAR Gantt to a REST backend using RestDataProvider or raw fetch calls.
+---
+
+SVAR Gantt is data-agnostic: you load tasks and links from any source and apply changes back to the server through the event system. The `@svar-ui/gantt-data-provider` package provides a ready-made `RestDataProvider` class that implements this for standard REST APIs.
+
+## Raw fetch approach
+
+For full control, fetch initial data yourself and wire up the `request-data` event for lazy-loaded subtrees:
+
+```svelte
+<script>
+  import { Gantt, ContextMenu, Editor } from "@svar-ui/svelte-gantt";
+
+  const server = "https://your-api.example.com";
+
+  let api = $state();
+  let tasks = $state([]);
+  let links = $state([]);
+
+  // Parse date strings into Date objects
+  function parseDates(data) {
+    data.forEach(item => {
+      item.start = new Date(item.start);
+      if (item.end) item.end = new Date(item.end);
+    });
+    return data;
+  }
+
+  // Load root-level data on mount
+  Promise.all([
+    fetch(server + "/tasks").then(res => res.json()).then(arr => parseDates(arr)),
+    fetch(server + "/links").then(res => res.json()),
+  ]).then(([t, l]) => {
+    tasks = t;
+    links = l;
+  });
+
+  // Handle lazy-load requests for sub-trees
+  function init(api) {
+    api.on("request-data", ev => {
+      Promise.all([
+        fetch(server + `/tasks/${ev.id}`).then(res => res.json()).then(arr => parseDates(arr)),
+        fetch(server + `/links/${ev.id}`).then(res => res.json()),
+      ]).then(([tasks, links]) => {
+        api.exec("provide-data", {
+          id: ev.id,
+          data: { tasks, links },
+        });
+      });
+    });
+  }
+</script>
+
+<ContextMenu {api}>
+  <Gantt bind:this={api} {init} {tasks} {links} />
+</ContextMenu>
+<Editor {api} />
+```
+
+<Note>
+Date strings from the server must be converted to `Date` objects before passing them to Gantt. Call `new Date(item.start)` for `start`, `end`, `base_start`, and `base_end` fields.
+</Note>
+
+## RestDataProvider
+
+`RestDataProvider` handles both data loading and automatic persistence of Gantt actions (add, update, delete tasks and links) back to the server.
+
+### Installation
+
+```bash
+npm install @svar-ui/gantt-data-provider
+```
+
+### Constructor
+
+```typescript
+new RestDataProvider(url: string, config?: { batchURL?: string })
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `url` | `string` | Base URL of the REST API |
+| `config.batchURL` | `string` | Relative URL for batch requests (enables batch mode) |
+
+### getData()
+
+Fetches tasks and links from the server:
+
+```typescript
+restProvider.getData(id?: TID): Promise<{ tasks: ITask[]; links: ILink[] }>
+```
+
+- Without an `id` — fetches all root-level data (`GET /tasks`, `GET /links`).
+- With an `id` — fetches the subtree for that task (`GET /tasks/:id`, `GET /links/:id`).
+
+`getData()` calls `parseDates()` internally, so `start`, `end`, `base_start`, and `base_end` fields are already converted to `Date` objects.
+
+### Wiring to Gantt
+
+<Steps>
+
+  ### Create the provider
+
+  ```svelte
+  <script>
+    import { RestDataProvider } from "@svar-ui/gantt-data-provider";
+    import { Gantt, ContextMenu, Editor } from "@svar-ui/svelte-gantt";
+
+    const restProvider = new RestDataProvider(
+      "https://your-api.example.com"
+    );
+  </script>
+  ```
+
+  ### Load initial data
+
+  ```svelte
+  <script>
+    let tasks = $state();
+    let links = $state();
+
+    restProvider.getData().then(({ tasks: t, links: l }) => {
+      tasks = t;
+      links = l;
+    });
+  </script>
+  ```
+
+  ### Connect the provider to the Gantt API
+
+  Call `api.setNext(restProvider)` so the provider intercepts every Gantt action and persists it to the server. Also handle `request-data` for lazy subtrees:
+
+  ```svelte
+  <script>
+    function init(api) {
+      api.setNext(restProvider);
+
+      api.on("request-data", ev => {
+        restProvider.getData(ev.id).then(({ tasks, links }) => {
+          api.exec("provide-data", {
+            id: ev.id,
+            data: { tasks, links },
+          });
+        });
+      });
+    }
+  </script>
+
+  <ContextMenu {api}>
+    <Gantt bind:this={api} {init} {tasks} {links} />
+  </ContextMenu>
+  <Editor {api} />
+  ```
+
+</Steps>
+
+### Full example
+
+```svelte
+<script>
+  import { RestDataProvider } from "@svar-ui/gantt-data-provider";
+  import { Gantt, ContextMenu, Editor } from "@svar-ui/svelte-gantt";
+
+  const restProvider = new RestDataProvider(
+    "https://your-api.example.com"
+  );
+
+  let api = $state();
+  let tasks = $state();
+  let links = $state();
+
+  restProvider.getData().then(({ tasks: t, links: l }) => {
+    tasks = t;
+    links = l;
+  });
+
+  function init(api) {
+    api.setNext(restProvider);
+
+    api.on("request-data", ev => {
+      restProvider.getData(ev.id).then(({ tasks, links }) => {
+        api.exec("provide-data", {
+          id: ev.id,
+          data: { tasks, links },
+        });
+      });
+    });
+  }
+</script>
+
+<ContextMenu {api}>
+  <Gantt bind:this={api} {init} {tasks} {links} />
+</ContextMenu>
+<Editor {api} />
+```
+
+## Expected REST API endpoints
+
+`RestDataProvider` maps Gantt actions to the following HTTP endpoints:
+
+### Tasks
+
+| Method | URL | Triggered by |
+|--------|-----|--------------|
+| `GET` | `/tasks` | `getData()` (initial load) |
+| `GET` | `/tasks/:id` | `getData(id)` (subtree load) |
+| `POST` | `/tasks` | `add-task` |
+| `PUT` | `/tasks/:id` | `update-task`, `move-task`, `copy-task` |
+| `DELETE` | `/tasks/:id` | `delete-task` |
+
+### Links
+
+| Method | URL | Triggered by |
+|--------|-----|--------------|
+| `GET` | `/links` | `getData()` (initial load) |
+| `GET` | `/links/:id` | `getData(id)` (subtree load) |
+| `POST` | `/links` | `add-link` |
+| `PUT` | `/links/:id` | `update-link` |
+| `DELETE` | `/links/:id` | `delete-link` |
+
+### Date serialisation
+
+When sending data to the server, `Date` objects are serialised using the format `yyyy-MM-dd HH:mm:ss`.
+
+## Batch mode
+
+When multiple changes happen in quick succession (e.g. moving several tasks), batch mode groups them into a single HTTP request to reduce network overhead.
+
+Enable it by providing `batchURL` in the config:
+
+```svelte
+<script>
+  import { RestDataProvider } from "@svar-ui/gantt-data-provider";
+
+  const restProvider = new RestDataProvider(
+    "https://your-api.example.com",
+    { batchURL: "batch" }        // resolves to POST /batch
+  );
+</script>
+```
+
+In batch mode, queued changes are flushed after a 10 ms debounce. If more than one change accumulated, they are sent as a single `POST /batch` request with this body shape:
+
+```json
+[
+  { "url": "tasks/42",  "method": "PUT",    "data": { "text": "Renamed", "start": "2024-03-01 00:00:00" } },
+  { "url": "tasks/43",  "method": "DELETE", "data": {} },
+  { "url": "links",     "method": "POST",   "data": { "source": 42, "target": 43, "type": "e2s" } }
+]
+```
+
+If only one change accumulated within the debounce window, it is sent as a regular individual request.
+
+```svelte
+<script>
+  import { RestDataProvider } from "@svar-ui/gantt-data-provider";
+  import { Gantt, ContextMenu, Editor } from "@svar-ui/svelte-gantt";
+
+  const restProvider = new RestDataProvider(
+    "https://your-api.example.com",
+    { batchURL: "batch" }
+  );
+
+  let api = $state();
+  let tasks = $state();
+  let links = $state();
+
+  restProvider.getData().then(({ tasks: t, links: l }) => {
+    tasks = t;
+    links = l;
+  });
+
+  function init(api) {
+    api.setNext(restProvider);
+
+    api.on("request-data", ev => {
+      restProvider.getData(ev.id).then(({ tasks, links }) => {
+        api.exec("provide-data", {
+          id: ev.id,
+          data: { tasks, links },
+        });
+      });
+    });
+  }
+</script>
+
+<ContextMenu {api}>
+  <Gantt bind:this={api} {init} {tasks} {links} />
+</ContextMenu>
+<Editor {api} />
+```
+
+## parseDates() reference
+
+`RestDataProvider.parseDates()` iterates over a task array and converts the following string fields to `Date` objects in place:
+
+| Field | Converted |
+|-------|----------|
+| `start` | Always |
+| `end` | If present |
+| `base_start` | If present |
+| `base_end` | If present |
+
+```typescript
+parseDates(data: ITask[]): ITask[]
+```
+
+`getData()` calls this automatically. You only need to call it manually if you bypass `getData()` and fetch tasks with your own `fetch` calls.

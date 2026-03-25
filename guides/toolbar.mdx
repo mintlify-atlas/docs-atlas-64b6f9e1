@@ -1,0 +1,249 @@
+---
+title: "Toolbar"
+description: "Add a task toolbar to your Gantt chart to give users quick access to common actions."
+---
+
+The `Toolbar` component renders a row of action buttons above the Gantt chart. When connected via the `api` prop it automatically enables and disables built-in buttons based on the current selection and chart state.
+
+## Basic setup
+
+```svelte
+<script>
+  import { Gantt, Toolbar, Editor } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<Toolbar {api} />
+<div class="gtcell">
+  <Gantt
+    bind:this={api}
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+  />
+  <Editor {api} />
+</div>
+
+<style>
+  .gtcell {
+    height: calc(100% - 50px);
+    border-top: var(--wx-gantt-border);
+  }
+</style>
+```
+
+<Note>
+  Place `Toolbar` before the `Gantt` element so it renders above the chart. Adjust the height of the chart container to account for the toolbar's height.
+</Note>
+
+## Toolbar props
+
+<ParamField path="api" type="IApi">
+  The Gantt API object. Connects the toolbar so built-in button states (enabled/disabled) track the chart selection.
+</ParamField>
+
+<ParamField path="items" type="IButtonConfig[]">
+  Array of button descriptors. Overrides the default button set.
+</ParamField>
+
+## Default toolbar buttons
+
+The `defaultToolbarButtons` array and the `getToolbarButtons()` helper give you a copy of the built-in button configuration:
+
+```svelte
+<script>
+  import { defaultToolbarButtons, getToolbarButtons } from "@svar-ui/svelte-gantt";
+
+  // static reference (do not mutate)
+  console.log(defaultToolbarButtons);
+
+  // fresh copy safe to modify
+  const items = getToolbarButtons();
+</script>
+```
+
+Built-in button IDs:
+
+| ID | Description |
+|---|---|
+| `add-task` | Add a new task |
+| `edit-task` | Open the editor for the selected task |
+| `delete-task` | Delete the selected task |
+| `move-task:up` | Move the selected task up |
+| `move-task:down` | Move the selected task down |
+| `copy-task` | Copy the selected task |
+| `cut-task` | Cut the selected task |
+| `paste-task` | Paste the clipboard task |
+| `indent-task:add` | Indent the selected task (make it a child) |
+| `indent-task:remove` | Outdent the selected task |
+
+Separators between button groups use `{ comp: "separator" }`.
+
+## Customising the button list
+
+Call `getToolbarButtons()` to get a modifiable copy of the defaults, then filter or extend it before passing to `Toolbar`:
+
+```svelte
+<script>
+  import { Gantt, Toolbar, Editor, getToolbarButtons } from "@svar-ui/svelte-gantt";
+  import { getContext } from "svelte";
+  import { getData } from "./data";
+
+  const helpers = getContext("wx-helpers");
+  const data = getData();
+  let api = $state();
+
+  // remove the indent/outdent buttons
+  const items = getToolbarButtons().filter(b => {
+    return b.id?.indexOf("indent") === -1;
+  });
+
+  // add a custom icon button
+  items.push({
+    id: "my-action",
+    comp: "icon",
+    icon: "wxi-cat",
+    handler: actionHandler,
+  });
+
+  function actionHandler() {
+    helpers.showNotice({ text: "'My action' clicked" });
+  }
+</script>
+
+<Toolbar {api} {items} />
+<div class="gtcell">
+  <Gantt
+    bind:this={api}
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+  />
+  <Editor {api} />
+</div>
+
+<style>
+  .gtcell {
+    height: calc(100% - 50px);
+    border-top: var(--wx-gantt-border);
+  }
+</style>
+```
+
+## Fully custom toolbar
+
+You can build a completely custom toolbar by constructing the `items` array yourself and wiring handlers that call `api.exec`:
+
+```svelte
+<script>
+  import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+  import { Toolbar } from "@svar-ui/svelte-toolbar";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+  let selected;
+
+  function handleAdd() {
+    api.exec("add-task", {
+      task: { text: "New task" },
+      target: $selected[0],
+      mode: "after",
+    });
+  }
+
+  function handleDelete() {
+    const order = getActionOrder(true);
+    order.forEach(id => api.exec("delete-task", { id }));
+  }
+
+  function handleMove(mode) {
+    const changeDir = mode === "down";
+    const order = getActionOrder(changeDir);
+    order.forEach(id => api.exec("move-task", { id, mode }));
+  }
+
+  function getActionOrder(changeDir) {
+    const tasks = $selected
+      .map(id => api.getTask(id))
+      .sort((a, b) => a.$level - b.$level || a.$y - b.$y);
+    const idOrder = tasks.map(o => o.id);
+    if (changeDir) return idOrder.reverse();
+    return idOrder;
+  }
+
+  const allItems = [
+    { comp: "button", type: "primary",  text: "Add task",       handler: handleAdd },
+    { comp: "button",                   text: "Delete task",    handler: handleDelete },
+    { comp: "button", type: "primary",  text: "Move task down", handler: () => handleMove("down") },
+    { comp: "button", type: "primary",  text: "Move task up",   handler: () => handleMove("up") },
+  ];
+
+  const items = $derived.by(() => {
+    if (api) {
+      selected = api.getReactiveState().selected;
+      return $selected.length ? allItems : [allItems[0]];
+    }
+    return [allItems[0]];
+  });
+</script>
+
+<Toolbar {items} />
+<div class="gtcell">
+  <Gantt
+    bind:this={api}
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+  />
+  <Editor {api} />
+</div>
+
+<style>
+  .gtcell {
+    height: calc(100% - 50px);
+    border-top: var(--wx-gantt-border);
+  }
+</style>
+```
+
+<Tip>
+  When building a custom toolbar without the `api` prop, use `api.getReactiveState().selected` to derive reactive selection state for conditional button visibility.
+</Tip>
+
+## Button config fields
+
+<ParamField path="id" type="string">
+  Unique identifier for the button. Used to match the action dispatched when the button is clicked.
+</ParamField>
+
+<ParamField path="comp" type="'button' | 'icon' | 'separator'" required>
+  The control type. `"button"` renders a labelled button, `"icon"` renders an icon-only button, `"separator"` renders a visual divider.
+</ParamField>
+
+<ParamField path="text" type="string">
+  Button label (for `comp: "button"`) or keyboard shortcut hint (for `comp: "icon"`).
+</ParamField>
+
+<ParamField path="icon" type="string">
+  Icon class name (e.g. `"wxi-plus"`).
+</ParamField>
+
+<ParamField path="type" type="string">
+  Visual style variant, e.g. `"primary"`, `"secondary"`, `"danger"`.
+</ParamField>
+
+<ParamField path="handler" type="() => void">
+  Click handler for custom buttons. Built-in buttons handle their own actions automatically.
+</ParamField>
+
+<ParamField path="isDisabled" type="(task, state, target?) => boolean">
+  Function returning `true` to disable the button based on the current task, state, or target.
+</ParamField>
+
+<ParamField path="isHidden" type="(task, state, target?) => boolean">
+  Function returning `true` to hide the button based on the current task, state, or target.
+</ParamField>

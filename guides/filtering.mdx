@@ -1,0 +1,303 @@
+---
+title: "Filtering"
+description: "Filter tasks in the Gantt chart programmatically, with inline header filters, or with a filter builder."
+---
+
+SVAR Svelte Gantt supports multiple filtering approaches. You can filter tasks by calling `api.exec("filter-tasks", ...)` with any custom function, use inline column header filters, integrate the `FilterBuilder` component, or parse natural language queries.
+
+## The `TFilterHandler` type
+
+A filter handler is a plain function that receives a task object and returns `true` to show it or `false` to hide it:
+
+```typescript
+type TFilterHandler = (task: any) => boolean;
+```
+
+Pass it to the `filter-tasks` action:
+
+```javascript
+api.exec("filter-tasks", { filter: (task) => task.progress > 50 });
+```
+
+To clear an active filter, call the action without a `filter` value:
+
+```javascript
+api.exec("filter-tasks", {});
+```
+
+## Programmatic filtering
+
+Create a text-search filter that matches task names and optionally expands parent tasks:
+
+```svelte
+<script>
+  import { Gantt, ContextMenu } from "@svar-ui/svelte-gantt";
+  import { Switch, Field, Text, Button } from "@svar-ui/svelte-core";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+
+  let open = $state(true);
+  let text = $state("");
+  let tasks = $state([...data.tasks]);
+
+  function init(ganttApi) {
+    api = ganttApi;
+  }
+
+  function filterTasks(ev) {
+    let { value } = ev;
+    value = value.toLowerCase();
+    const filter = value
+      ? task => (task.text || "").toLowerCase().indexOf(value) > -1
+      : null;
+
+    api.exec("filter-tasks", { filter, open });
+  }
+
+  function reload() {
+    tasks = [...data.tasks];
+    text = "";
+  }
+</script>
+
+<div class="bar">
+  <Field label="Filter by Task name">
+    {#snippet children({ id })}
+      <Text {id} clear icon="wxi-search" bind:value={text} onchange={filterTasks} />
+    {/snippet}
+  </Field>
+  <Field label="Open tasks while filtering">
+    {#snippet children({ id })}
+      <Switch {id} bind:value={open} />
+    {/snippet}
+  </Field>
+  <Button type="primary" onclick={reload}>Reload</Button>
+</div>
+
+<ContextMenu {api}>
+  <Gantt
+    {init}
+    {tasks}
+    links={data.links}
+    scales={data.scales}
+  />
+</ContextMenu>
+```
+
+<Tip>
+  Pass `open: true` in the `filter-tasks` payload to automatically expand parent tasks that contain matching children.
+</Tip>
+
+## Inline header filters
+
+Add filter controls directly to column headers by passing a `filter` descriptor in the `header` array for each column. Each filter descriptor has a `type` (`"text"` or `"datepicker"`) and an optional `config` object.
+
+```svelte
+<script>
+  import { Gantt, ContextMenu } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+  let tasks = $state([...data.tasks]);
+
+  function clear() {
+    api.exec("filter-tasks", {});
+  }
+
+  const textfilter   = { filter: { type: "text",       config: { clear: true } } };
+  const datefilter   = { filter: { type: "datepicker", config: { format: "%d-%m-%Y" } } };
+  const numberfilter = {
+    filter: {
+      type: "text",
+      config: {
+        clear: true,
+        handler: (a, b) => !b || a === b * 1,
+      },
+    },
+  };
+
+  const columns = [
+    { id: "text",     header: ["Task name",  textfilter],   width: 200 },
+    { id: "start",    header: ["Start date", datefilter],   align: "center", width: 130 },
+    { id: "end",      header: ["End date",   datefilter],   align: "center", width: 130 },
+    { id: "duration", header: ["Duration",   numberfilter], width: 100, align: "center" },
+    { id: "add-task", header: "Add task",                   align: "center" },
+  ];
+</script>
+
+<div class="bar">
+  <Button type="primary" onclick={clear}>Clear filters</Button>
+</div>
+
+<ContextMenu {api}>
+  <Gantt
+    bind:this={api}
+    {tasks}
+    {columns}
+    links={data.links}
+    scales={data.scales}
+    zoom
+  />
+</ContextMenu>
+```
+
+The header for a filterable column is an array where the first element is the header text and the second is the filter descriptor:
+
+```javascript
+{ id: "text", header: ["Task name", { filter: { type: "text", config: { clear: true } } }] }
+```
+
+## Filter builder
+
+Integrate `FilterBuilder` from `@svar-ui/svelte-filter` to let users compose structured multi-rule filters:
+
+```svelte
+<script>
+  import { Gantt, ContextMenu } from "@svar-ui/svelte-gantt";
+  import { FilterBuilder, getOptions, createFilter } from "@svar-ui/svelte-filter";
+  import { getData } from "./data";
+
+  const data = getData();
+  const tasks = data.tasks;
+  let api = $state();
+
+  function init(ganttApi) {
+    api = ganttApi;
+  }
+
+  // initial filter state
+  const value = {
+    glue: "or",
+    rules: [
+      { field: "text",     filter: "contains", value: "plan" },
+      { field: "duration", filter: "greater",  value: 5 },
+    ],
+  };
+
+  const options = {
+    text:     getOptions(tasks, "text"),
+    start:    getOptions(tasks, "start"),
+    end:      getOptions(tasks, "end"),
+    duration: getOptions(tasks, "duration"),
+  };
+
+  const fields = [
+    { id: "text",     label: "Task name",  type: "text" },
+    { id: "start",    label: "Start date", type: "date" },
+    { id: "end",      label: "End date",   type: "date" },
+    { id: "duration", label: "Duration",   type: "number" },
+  ];
+
+  function applyFilter({ value }) {
+    const filter = createFilter(value);
+    api.exec("filter-tasks", { filter });
+  }
+
+  $effect(() => {
+    if (api) applyFilter({ value });
+  });
+</script>
+
+<FilterBuilder
+  {value}
+  {fields}
+  {options}
+  type="line"
+  onchange={applyFilter}
+/>
+
+<ContextMenu {api}>
+  <Gantt
+    {init}
+    {tasks}
+    links={data.links}
+    scales={data.scales}
+  />
+</ContextMenu>
+```
+
+## Natural language query filtering
+
+Use `FilterQuery` from `@svar-ui/svelte-filter` to accept free-text or query-syntax input and translate it into a structured filter:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+  import {
+    FilterQuery,
+    createFilter,
+    getQueryString,
+    getOptionsMap,
+  } from "@svar-ui/svelte-filter";
+  import { getData } from "./data";
+
+  const { tasks, links } = getData();
+  let textValue = $state("Progress: < 20");
+  let api = $state();
+  let filter = $state();
+
+  $effect(() => {
+    if (api && filter !== undefined) api.exec("filter-tasks", { filter });
+  });
+
+  const options = getOptionsMap(tasks);
+
+  const fields = [
+    { id: "text",     label: "Text",        type: "text" },
+    { id: "details",  label: "Description", type: "text" },
+    { id: "type",     label: "Type",        type: "text" },
+    { id: "duration", label: "Duration",    type: "number" },
+    { id: "start",    label: "Start Date",  type: "date" },
+    { id: "end",      label: "End Date",    type: "date" },
+    { id: "progress", label: "Progress",    type: "number" },
+  ];
+
+  async function handleFilter({ value, error, text, startProgress, endProgress }) {
+    if (text) {
+      error = null;
+      try {
+        startProgress();
+        value = await text2filter(text, fields);
+        textValue = value ? getQueryString(value).query : "";
+      } catch (e) {
+        error = e;
+      } finally {
+        endProgress();
+      }
+    }
+    filter = createFilter(value, {}, fields);
+  }
+
+  async function text2filter(text, fields) {
+    const response = await fetch(AI_ENDPOINT_URL, {
+      method: "POST",
+      body: JSON.stringify({ text, fields }),
+    });
+    return response.json();
+  }
+</script>
+
+<FilterQuery
+  value={textValue}
+  placeholder="e.g., Text: contains test or Duration: >5"
+  {fields}
+  {options}
+  onchange={handleFilter}
+/>
+
+<Gantt {tasks} {links} bind:this={api} />
+```
+
+Example query strings that `FilterQuery` accepts:
+
+- `Duration: >10`
+- `StartDate: >= 2026-03-01`
+- `Text: contains test`
+- `Almost complete` (natural language — requires an AI endpoint)
+
+<Note>
+  Natural language parsing requires a backend endpoint that converts the input text into a structured filter JSON. The `text2filter` function above shows how to call such an endpoint. Structured query syntax (e.g. `Duration: >10`) works without an AI service.
+</Note>

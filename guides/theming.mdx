@@ -1,0 +1,231 @@
+---
+title: Theming
+description: Apply built-in themes to Gantt, customise CSS variables, and highlight time cells such as weekends and holidays.
+---
+
+SVAR Gantt ships with three built-in themes. Each theme is a Svelte wrapper component that applies a CSS class to its subtree and defines a full set of CSS custom properties.
+
+## Built-in themes
+
+<CardGroup cols={3}>
+  <Card title="Material" icon="palette">
+    Clean, elevated look with rounded task bars and Google Material-inspired colours and typography (Roboto).
+  </Card>
+  <Card title="Willow" icon="sun">
+    Light, flat design with subtle borders and a neutral colour palette.
+  </Card>
+  <Card title="WillowDark" icon="moon">
+    Dark-mode variant of Willow with inverted backgrounds and adjusted contrast.
+  </Card>
+</CardGroup>
+
+## Applying a theme
+
+Import the theme component and wrap your Gantt (and any companion components) inside it:
+
+<Tabs>
+  <Tab title="Material">
+    ```svelte
+    <script>
+      import { Gantt, Toolbar, ContextMenu, Editor } from "@svar-ui/svelte-gantt";
+      import { Material } from "@svar-ui/svelte-gantt";
+
+      let api = $state();
+    </script>
+
+    <Material>
+      <Toolbar {api} />
+      <ContextMenu {api}>
+        <Gantt bind:this={api} {tasks} {links} />
+      </ContextMenu>
+      <Editor {api} />
+    </Material>
+    ```
+  </Tab>
+  <Tab title="Willow">
+    ```svelte
+    <script>
+      import { Gantt } from "@svar-ui/svelte-gantt";
+      import { Willow } from "@svar-ui/svelte-gantt";
+    </script>
+
+    <Willow>
+      <Gantt {tasks} {links} />
+    </Willow>
+    ```
+  </Tab>
+  <Tab title="WillowDark">
+    ```svelte
+    <script>
+      import { Gantt } from "@svar-ui/svelte-gantt";
+      import { WillowDark } from "@svar-ui/svelte-gantt";
+    </script>
+
+    <WillowDark>
+      <Gantt {tasks} {links} />
+    </WillowDark>
+    ```
+  </Tab>
+</Tabs>
+
+### Fonts prop
+
+Each theme component accepts a `fonts` boolean prop (defaults to `true`). When `true`, the theme loads its font stack automatically. Set it to `false` if you already load the fonts yourself:
+
+```svelte
+<Material fonts={false}>
+  <Gantt {tasks} {links} />
+</Material>
+```
+
+## CSS custom properties
+
+Every visual detail is controlled by CSS custom properties. Override them inside your own CSS to customise individual aspects without building a new theme.
+
+### Task bar variables
+
+| Variable | Description |
+|----------|-------------|
+| `--wx-gantt-task-color` | Task bar background |
+| `--wx-gantt-task-font-color` | Text colour inside a task bar |
+| `--wx-gantt-task-fill-color` | Progress fill colour |
+| `--wx-gantt-task-border-color` | Task bar border |
+| `--wx-gantt-task-critical-color` | Critical-path task colour |
+| `--wx-gantt-summary-color` | Summary task bar background |
+| `--wx-gantt-milestone-color` | Milestone diamond colour |
+| `--wx-gantt-bar-border-radius` | Bar corner radius |
+| `--wx-gantt-bar-shadow` | Drop shadow on bars |
+
+### Grid variables
+
+| Variable | Description |
+|----------|-------------|
+| `--wx-grid-header-font` | Column header font shorthand |
+| `--wx-grid-header-font-color` | Header text colour |
+| `--wx-grid-header-text-transform` | `uppercase` / `capitalize` |
+| `--wx-grid-body-font` | Row text font shorthand |
+| `--wx-grid-body-font-color` | Row text colour |
+| `--wx-grid-body-row-border` | Row separator border |
+
+### Time scale variables
+
+| Variable | Description |
+|----------|-------------|
+| `--wx-timescale-font` | Time scale cell font |
+| `--wx-timescale-font-color` | Time scale text colour |
+| `--wx-timescale-shadow` | Box shadow under the time scale |
+| `--wx-timescale-border` | Time scale cell border |
+| `--wx-gantt-holiday-background` | Background for weekend/holiday cells |
+| `--wx-gantt-holiday-color` | Text colour for weekend/holiday cells |
+
+### Dependency link variables
+
+| Variable | Description |
+|----------|-------------|
+| `--wx-gantt-link-color` | Link line colour |
+| `--wx-gantt-link-color-hovered` | Link colour on hover |
+| `--wx-gantt-link-critical-color` | Critical-path link colour |
+| `--wx-gantt-marker-color` | Today / custom marker colour |
+
+## Creating a custom theme
+
+The simplest approach is to wrap your overrides in a CSS class and apply it with a minimal Svelte component that mirrors the built-in theme pattern:
+
+```svelte
+<!-- themes/MyTheme.svelte -->
+<script>
+  import { Willow } from "@svar-ui/svelte-gantt";
+  let { fonts = true, children } = $props();
+</script>
+
+<Willow {fonts}>
+  {@render children()}
+</Willow>
+
+<style>
+  :global(.wx-willow-theme) {
+    /* override only what you need */
+    --wx-gantt-task-color: #7c3aed;
+    --wx-gantt-task-fill-color: #6d28d9;
+    --wx-gantt-task-border-color: #6d28d9;
+    --wx-gantt-summary-color: #059669;
+    --wx-gantt-bar-border-radius: 2px;
+
+    --wx-gantt-holiday-background: #fdf4ff;
+  }
+</style>
+```
+
+<Note>
+All custom properties must be set on the theme's root CSS class (e.g. `.wx-willow-theme`, `.wx-material-theme`, `.wx-willow-dark-theme`) so they are properly scoped.
+</Note>
+
+## Cell borders
+
+The `cellBorders` prop on `<Gantt>` controls the grid lines drawn inside the chart area:
+
+| Value | Effect |
+|-------|--------|
+| `"full"` | Horizontal and vertical lines on every cell (default) |
+| `"column"` | Vertical lines only — one per time column |
+
+```svelte
+<Gantt {tasks} {links} {scales} cellBorders="column" />
+```
+
+## Highlighting time cells
+
+Pass a `highlightTime` callback to apply a CSS class to individual day or hour cells. This is how weekends, holidays, and non-working hours are visually distinguished.
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  const scales = [
+    { unit: "year",  step: 1, format: "%Y" },
+    { unit: "month", step: 2, format: "%F %Y" },
+    { unit: "week",  step: 1, format: "Week %W" },
+    { unit: "day",   step: 1, format: "%j, %l" },
+  ];
+
+  function isDayOff(date) {
+    const d = date.getDay();
+    return d == 0 || d == 6;
+  }
+
+  function isHourOff(date) {
+    const h = date.getHours();
+    return h < 8 || h == 12 || h > 17;
+  }
+
+  function highlightTime(d, u) {
+    if (u == "day"  && isDayOff(d))              return "wx-weekend";
+    if (u == "hour" && (isDayOff(d) || isHourOff(d))) return "wx-weekend";
+    return "";
+  }
+</script>
+
+<Gantt
+  {tasks}
+  {links}
+  {scales}
+  {highlightTime}
+  zoom
+/>
+```
+
+The callback signature is:
+
+```typescript
+highlightTime?: (date: Date, unit: "day" | "hour") => string;
+```
+
+Return a CSS class name string (or empty string for no highlight). The built-in themes already style `.wx-weekend` with the `--wx-gantt-holiday-background` colour.
+
+<Tip>
+You can return any custom CSS class name — not just `wx-weekend`. Add your own styles to target it:
+
+```css
+.my-holiday { background: #fff3cd; }
+```
+</Tip>

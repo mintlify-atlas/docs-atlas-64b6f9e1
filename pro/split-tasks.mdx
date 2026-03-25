@@ -1,0 +1,104 @@
+---
+title: Split Tasks
+description: Break a single task into multiple independently draggable time segments on the timeline.
+---
+
+<Note>
+  Split tasks are a **PRO feature**. See [licensing and trial info](https://svar.dev/svelte/gantt/#pro).
+</Note>
+
+Split tasks let you represent interrupted work within a single logical task. Instead of a single continuous bar, the task renders as two or more segments — each with its own start and end date — in the same row.
+
+## The `splitTasks` Prop
+
+Enable split task support on the `<Gantt>` component:
+
+```svelte
+<Gantt splitTasks={true} tasks={data.tasks} links={data.links} scales={data.scales} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `splitTasks` | `boolean` | `false` | Enables rendering and editing of task segments. |
+
+## The `segments` Field on Tasks
+
+A split task is defined by adding a `segments` array to the task object. Each segment is a partial `ITask` with at minimum `start` and `end` (or `duration`) values:
+
+```typescript
+interface ITask {
+  // ... standard fields ...
+  segments?: Partial<ITask>[]; // array of time segments
+}
+```
+
+When `segments` is present, the task's top-level `start` and `end` span the full range from the first segment start to the last segment end.
+
+## Example: Task with Multiple Segments
+
+```javascript
+const tasks = [
+  {
+    id: 1,
+    text: "Development work",
+    parent: 0,
+    type: "task",
+    // The overall task spans the combined range
+    start: new Date(2026, 3, 2),
+    end: new Date(2026, 3, 20),
+    segments: [
+      {
+        // First segment: April 2–7
+        start: new Date(2026, 3, 2),
+        end: new Date(2026, 3, 7),
+      },
+      {
+        // Second segment: April 12–20 (gap between segments is free time)
+        start: new Date(2026, 3, 12),
+        end: new Date(2026, 3, 20),
+      },
+    ],
+  },
+];
+```
+
+## Full Example
+
+```svelte
+<script>
+  import { getData } from "../data";
+  import { Gantt, ContextMenu, Editor, Toolbar, Tooltip } from "@svar-ui/svelte-gantt";
+
+  let api = $state();
+  const data = getData("day", { splitTasks: true });
+</script>
+
+<Toolbar {api} />
+<div class="gtcell">
+  <ContextMenu {api}>
+    <Tooltip {api}>
+      <Gantt
+        bind:this={api}
+        tasks={data.tasks}
+        links={data.links}
+        scales={data.scales}
+        splitTasks={true}
+      />
+    </Tooltip>
+  </ContextMenu>
+  <Editor {api} />
+</div>
+```
+
+## Interacting with Segments
+
+When `splitTasks` is enabled:
+
+- **Dragging** a segment moves only that segment within the row.
+- **Resizing** a segment adjusts its individual `start` or `end` without affecting other segments.
+- **Dragging** the parent task bar (in the gap between segments) moves all segments together.
+- The task editor works at the segment level when a segment is the active element — `activeTask` can be set to `{ id, segmentIndex }` to target a specific segment.
+
+<Tip>
+  Custom tooltips work with split tasks. Use a custom `Tooltip` content component and check `segmentIndex` to display segment-specific information.
+</Tip>

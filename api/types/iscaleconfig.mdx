@@ -1,0 +1,150 @@
+---
+title: "IScaleConfig"
+description: "Type definition for a Gantt time scale row"
+---
+
+The `IScaleConfig` type defines a single row in the Gantt chart's time header. You can stack multiple scale rows to create multi-level headers (for example, months on top and days below).
+
+## TypeScript definition
+
+```typescript
+export type IScaleConfig = {
+  unit: TLengthUnit;
+  step: number;
+  format?: ((date: Date, next?: Date) => string) | string;
+  css?: (date: Date) => string;
+};
+
+export type TLengthUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "quarter"
+  | "year"
+  | string;
+```
+
+## Fields
+
+<ParamField body="unit" type="TLengthUnit" required>
+  The time unit for this scale row. Controls how wide each cell is relative to `cellWidth`.
+
+  Accepted values:
+  - `"minute"` — one cell per minute
+  - `"hour"` — one cell per hour
+  - `"day"` — one cell per day
+  - `"week"` — one cell per week
+  - `"month"` — one cell per month
+  - `"quarter"` — one cell per quarter (3 months)
+  - `"year"` — one cell per year
+  - A custom string registered via `registerScaleUnit()`
+</ParamField>
+
+<ParamField body="step" type="number" required>
+  Number of units per cell. For example, `unit: "day", step: 7` produces one cell per 7 days (same width as a week cell but with different rendering).
+</ParamField>
+
+<ParamField body="format" type="((date: Date, next?: Date) => string) | string">
+  Controls the label displayed in each scale cell.
+
+  - **String**: A [date-fns format string](https://date-fns.org/docs/format), e.g. `"MMM d"`, `"yyyy"`, `"HH:mm"`.
+  - **Function**: A custom formatter receiving the cell's start `date` and optionally the next cell's `date`. Return a string.
+
+  When omitted, a sensible default label is used per unit.
+</ParamField>
+
+<ParamField body="css" type="(date: Date) => string">
+  Function returning a CSS class string for a given cell's start date. Use this to highlight weekends, months, or other intervals.
+</ParamField>
+
+## TLengthUnit values
+
+| Unit | Cell represents |
+|------|----------------|
+| `minute` | 1 minute |
+| `hour` | 1 hour |
+| `day` | 1 calendar day |
+| `week` | 1 calendar week |
+| `month` | 1 calendar month |
+| `quarter` | 3 months |
+| `year` | 1 calendar year |
+
+## Format string examples
+
+The `format` field accepts [date-fns](https://date-fns.org/docs/format) format strings:
+
+| Format string | Example output |
+|---------------|---------------|
+| `"d"` | `5` |
+| `"MMM d"` | `Mar 5` |
+| `"MMMM yyyy"` | `March 2024` |
+| `"QQQ yyyy"` | `Q1 2024` |
+| `"yyyy"` | `2024` |
+| `"HH:mm"` | `09:30` |
+| `"EEE, MMM d"` | `Tue, Mar 5` |
+
+## Examples
+
+<Tabs>
+  <Tab title="Day / month">
+    ```typescript
+    const scales: IScaleConfig[] = [
+      { unit: "month", step: 1, format: "MMMM yyyy" },
+      { unit: "day",   step: 1, format: "d" }
+    ];
+    ```
+  </Tab>
+  <Tab title="Hour / day">
+    ```typescript
+    const scales: IScaleConfig[] = [
+      { unit: "day",  step: 1, format: "EEE, MMM d" },
+      { unit: "hour", step: 1, format: "HH" }
+    ];
+    ```
+  </Tab>
+  <Tab title="Quarter / month">
+    ```typescript
+    const scales: IScaleConfig[] = [
+      { unit: "year",    step: 1, format: "yyyy" },
+      { unit: "quarter", step: 1, format: "QQQ" },
+      { unit: "month",   step: 1, format: "MMM" }
+    ];
+    ```
+  </Tab>
+  <Tab title="Custom CSS">
+    ```typescript
+    const scales: IScaleConfig[] = [
+      { unit: "month", step: 1, format: "MMM yyyy" },
+      {
+        unit: "day",
+        step: 1,
+        format: "d",
+        css: (date) => {
+          const day = date.getDay();
+          return day === 0 || day === 6 ? "weekend" : "";
+        }
+      }
+    ];
+    ```
+  </Tab>
+  <Tab title="Function format">
+    ```typescript
+    const scales: IScaleConfig[] = [
+      {
+        unit: "week",
+        step: 1,
+        format: (date, next) => {
+          const end = next ? new Date(next.getTime() - 1) : date;
+          return `${date.getDate()} – ${end.getDate()}`;
+        }
+      }
+    ];
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+  The bottom-most scale row should have the smallest unit — this controls the `lengthUnit` used for task positioning. Larger units above it serve as grouping headers.
+</Tip>

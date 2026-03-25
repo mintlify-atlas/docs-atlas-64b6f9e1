@@ -1,0 +1,145 @@
+---
+title: "Tooltips"
+description: "Show task details in a tooltip when the user hovers over a Gantt bar."
+---
+
+The `Tooltip` component wraps `Gantt` and displays a floating tooltip when the user hovers over a task bar. You can use the default tooltip or supply your own Svelte component to render custom content.
+
+## Basic setup
+
+Wrap `Gantt` with `Tooltip` and pass the shared `api`:
+
+```svelte
+<script>
+  import { Gantt, Tooltip } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<Tooltip {api}>
+  <Gantt
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+    bind:this={api}
+  />
+</Tooltip>
+```
+
+## Tooltip props
+
+<ParamField path="api" type="IApi">
+  The Gantt API object. The tooltip component uses it to read the hovered task's data.
+</ParamField>
+
+<ParamField path="content" type="Component<{ data: ITask }>">
+  A Svelte component used to render the tooltip body. It receives the hovered task as `data`.
+</ParamField>
+
+## Custom tooltip content
+
+Create a Svelte component that accepts a `data` prop of type `ITask` and render whatever you need:
+
+```svelte
+<!-- MyTooltipContent.svelte -->
+<script>
+  import { format } from "date-fns";
+  let { data } = $props();
+
+  const mask = "yyyy.MM.dd";
+</script>
+
+{#if data}
+  <div class="data">
+    <div class="text">
+      <span class="caption">{data.type}:</span>
+      {data.text}
+    </div>
+    <div class="text">
+      <span class="caption">start:</span>
+      {format(data.start, mask)}
+    </div>
+    {#if data.end}
+      <div class="text">
+        <span class="caption">end:</span>
+        {format(data.end, mask)}
+      </div>
+    {/if}
+  </div>
+{/if}
+
+<style>
+  .data {
+    white-space: nowrap;
+    background-color: var(--wx-tooltip-background);
+    padding: 3px 8px;
+  }
+  .text {
+    font-family: var(--wx-font-family);
+    color: var(--wx-color-primary-font);
+    font-size: 13px;
+    text-transform: capitalize;
+    margin-bottom: 5px;
+  }
+  .text:last-child {
+    margin-bottom: 0;
+  }
+  .caption {
+    font-weight: 700;
+  }
+</style>
+```
+
+Then pass the component to `Tooltip` via the `content` prop:
+
+```svelte
+<script>
+  import { Gantt, Tooltip } from "@svar-ui/svelte-gantt";
+  import MyTooltipContent from "./MyTooltipContent.svelte";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<Tooltip {api} content={MyTooltipContent}>
+  <Gantt
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+    bind:this={api}
+  />
+</Tooltip>
+```
+
+## Tooltip with children slot
+
+Instead of the `content` prop you can pass markup directly as children. The `Tooltip` component forwards children into the tooltip container:
+
+```svelte
+<script>
+  import { Gantt, Tooltip } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<Tooltip {api}>
+  {#snippet children()}
+    <div style="padding: 4px 8px; font-weight: bold;">Custom tooltip</div>
+  {/snippet}
+  <Gantt
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+    bind:this={api}
+  />
+</Tooltip>
+```
+
+<Note>
+  Use `content` when you need access to the hovered task's `data` inside the tooltip. Use `children` for static content that does not depend on the task.
+</Note>

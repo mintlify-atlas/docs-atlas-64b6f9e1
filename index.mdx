@@ -1,97 +1,123 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "SVAR Svelte Gantt"
+description: "A lightweight, customizable, and interactive Gantt chart component for Svelte. Visualize project timelines, manage tasks with drag-and-drop, and handle dependencies — all with a developer-friendly API and full TypeScript support."
 ---
 
-## Setting up
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/getting-started/quickstart">
+    Get a Gantt chart running in your Svelte app in minutes.
+  </Card>
+  <Card title="Installation" icon="package" href="/getting-started/installation">
+    Install for Svelte 5 or Svelte 4, with npm, yarn, or pnpm.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/gantt">
+    Full reference for all components, props, and the IApi object.
+  </Card>
+  <Card title="PRO Features" icon="star" href="/pro/overview">
+    Auto-scheduling, critical path, export, undo/redo, and more.
+  </Card>
+</CardGroup>
 
-Get your documentation site up and running in minutes.
+## What is SVAR Svelte Gantt?
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
+SVAR Svelte Gantt is a production-ready Gantt chart component for Svelte 5 (and Svelte 4). It provides everything you need to build interactive project timeline views — from simple task lists to complex project management UIs with dependencies, hierarchical tasks, and server-side data synchronization.
+
+```svelte
+<script>
+  import { Gantt, Willow } from "@svar-ui/svelte-gantt";
+
+  const tasks = [
+    {
+      id: 1,
+      start: new Date(2024, 3, 2),
+      end: new Date(2024, 3, 17),
+      text: "Project planning",
+      progress: 30,
+      parent: 0,
+      type: "summary",
+      open: true,
+    },
+    {
+      id: 2,
+      start: new Date(2024, 3, 2),
+      end: new Date(2024, 3, 8),
+      text: "Research",
+      progress: 60,
+      parent: 1,
+    },
+    {
+      id: 3,
+      start: new Date(2024, 3, 9),
+      end: new Date(2024, 3, 17),
+      text: "Design",
+      progress: 10,
+      parent: 1,
+    },
+  ];
+
+  const links = [{ id: 1, source: 2, target: 3, type: "e2s" }];
+  const scales = [
+    { unit: "month", step: 1, format: "%F %Y" },
+    { unit: "day", step: 1, format: "%j" },
+  ];
+</script>
+
+<Willow>
+  <Gantt {tasks} {links} {scales} />
+</Willow>
+```
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Drag-and-drop" icon="arrows-up-down-left-right">
+    Move, resize, and reorder tasks directly on the timeline or in the grid.
+  </Card>
+  <Card title="Task dependencies" icon="link">
+    Create and visualize finish-to-start, start-to-start, and other link types.
+  </Card>
+  <Card title="Hierarchical tasks" icon="sitemap">
+    Summary tasks with collapsible subtrees and automatic date calculations.
+  </Card>
+  <Card title="Configurable scales" icon="calendar">
+    Multi-row time scales with custom formats, zoom, and custom scale units.
+  </Card>
+  <Card title="Built-in editor" icon="pen-to-square">
+    Customizable task edit form with validation, custom controls, and sidebar/modal modes.
+  </Card>
+  <Card title="Filtering & sorting" icon="filter">
+    Column sorting, programmatic filtering, inline header filters, and natural language search.
+  </Card>
+  <Card title="Themes" icon="palette">
+    Material, Willow (light), and WillowDark themes included. Fully customizable via CSS.
+  </Card>
+  <Card title="TypeScript" icon="file-code">
+    Full TypeScript definitions for all components, props, and the API.
+  </Card>
+</CardGroup>
+
+## Open source and PRO editions
+
+SVAR Svelte Gantt is available under the MIT license. A [PRO edition](https://svar.dev/svelte/gantt/#pro) adds advanced features for enterprise project management:
+
+- Auto-scheduling with forward mode and Finish-to-Start dependencies
+- Critical path calculation and slack visualization
+- Work calendar with configurable working hours
+- Export to PDF, PNG, Excel, and MS Project
+- Undo/redo support
+- Baselines, rollups, split tasks, vertical markers, and unscheduled tasks
+
+<Card title="View PRO features" icon="star" href="/pro/overview">
+  Explore what's available in the PRO edition — including free trial information.
 </Card>
 
-## Make it yours
+## Svelte 4 and Svelte 5
 
-Design a docs site that looks great and empowers your users.
+| Version | Svelte | Package |
+|---------|--------|---------|
+| 2.x (current) | Svelte 5 | `@svar-ui/svelte-gantt` |
+| 1.x | Svelte 4 | `wx-svelte-gantt@1.2.0` |
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Note>
+  This documentation covers the 2.x (Svelte 5) version. If you are on Svelte 4, install `wx-svelte-gantt@1.2.0` and refer to the [migration guide](/migration/svelte4-to-svelte5).
+</Note>

@@ -1,0 +1,177 @@
+---
+title: Work Days Calendar
+description: Define a custom working schedule to ensure task durations and auto-scheduling respect non-working days and hours.
+---
+
+<Note>
+  The work days calendar is a **PRO feature**. See [licensing and trial info](https://svar.dev/svelte/gantt/#pro).
+</Note>
+
+The `Calendar` class lets you define which days and hours are working time. When a calendar is attached to the Gantt, task durations are measured in working hours/days and auto-scheduling skips non-working periods.
+
+## The `calendar` Prop
+
+Create a `Calendar` instance and pass it to the `<Gantt>` component:
+
+```svelte
+<script>
+  import { Calendar } from "@svar-ui/svelte-gantt";
+  const calendar = new Calendar({ ... });
+</script>
+
+<Gantt {calendar} ... />
+```
+
+## ICalendarConfig
+
+The `Calendar` constructor accepts an optional configuration object:
+
+```typescript
+interface ICalendarConfig {
+  name?: string; // optional identifier for the calendar
+  weekHours?: {
+    sunday?: number;
+    monday?: number;
+    tuesday?: number;
+    wednesday?: number;
+    thursday?: number;
+    friday?: number;
+    saturday?: number;
+  };
+}
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `name` | `string` | Optional label for the calendar instance. |
+| `weekHours` | `object` | Working hours per day of the week. Set a day to `0` to mark it as non-working. |
+
+## Basic Example
+
+Configure a standard Monday–Friday, 8-hours-per-day work week:
+
+```svelte
+<script>
+  import { getData } from "../data";
+  import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+  import { Calendar } from "@svar-ui/svelte-gantt";
+
+  const { tasks, links, scales } = getData("calendar");
+
+  const calendar = new Calendar({
+    weekHours: {
+      monday: 8,
+      tuesday: 8,
+      wednesday: 8,
+      thursday: 8,
+      friday: 8,
+      saturday: 0,
+      sunday: 0,
+    },
+  });
+
+  let api = $state();
+</script>
+
+<Gantt
+  {calendar}
+  {tasks}
+  {links}
+  {scales}
+  cellWidth={60}
+  bind:this={api}
+/>
+<Editor {api} />
+```
+
+## Calendar Interface
+
+The `Calendar` instance exposes the following methods:
+
+```typescript
+interface Calendar {
+  // Returns true if the given date falls on a working day
+  isWorkingDay(date: Date): boolean;
+
+  // Add a custom rule function that returns the working hours for a given date
+  addRule(rule: (date: Date) => number): void;
+
+  // Returns a copy of the calendar, optionally overriding config
+  clone(config?: ICalendarConfig): Calendar;
+
+  // Add a number of working days to a start date
+  addWorkingDays(start: Date, days: number, excludeEndDate?: boolean): Date | null;
+
+  // Add a number of working hours to a start date
+  addWorkingHours(start: Date, hours: number): Date | null;
+
+  // Get the next working day after the given date
+  getNextWorkingDay(date: Date): Date | null;
+
+  // Get the previous working day before the given date
+  getPreviousWorkingDay(date: Date): Date | null;
+
+  // Get the number of working days between two dates
+  getWorkingDays(start: Date, end: Date, excludeEndDate?: boolean): number;
+
+  // Get the number of working hours between two dates
+  getWorkingHours(start: Date, end?: Date, excludeEndDate?: boolean): number;
+
+  // Override working hours for a specific date
+  setDayHours(date: Date, hours: number): void;
+
+  // Override working hours for a range of dates
+  setRangeHours(start: Date, end: Date, hours: number): void;
+}
+```
+
+## Setting Exceptions with `setDayHours` and `setRangeHours`
+
+Use `setDayHours` to mark individual dates as non-working (e.g. public holidays) or to give them custom hours:
+
+```javascript
+// Mark a public holiday as non-working
+calendar.setDayHours(new Date(2026, 0, 1), 0); // New Year's Day
+
+// Mark a range of dates as non-working (e.g. company shutdown)
+calendar.setRangeHours(
+  new Date(2026, 11, 24),
+  new Date(2026, 11, 26),
+  0
+);
+```
+
+## Custom Rules with `addRule`
+
+For more complex schedules, add a rule function that receives a `Date` and returns the working hours for that day:
+
+```javascript
+calendar.addRule(date => {
+  // Half-day on the last Friday of every month
+  if (date.getDay() === 5) {
+    const nextWeek = new Date(date);
+    nextWeek.setDate(date.getDate() + 7);
+    if (nextWeek.getMonth() !== date.getMonth()) {
+      return 4; // 4 working hours instead of 8
+    }
+  }
+  return null; // null means use the default weekHours rule
+});
+```
+
+<Info>
+  Rules added via `addRule` take precedence over `weekHours`. Individual day overrides set via `setDayHours` take precedence over both.
+</Info>
+
+## Using the Calendar with Auto-Scheduling
+
+When a `calendar` and `schedule` are both active, all scheduling calculations (dependency propagation, duration measurement) use working time:
+
+```svelte
+<Gantt
+  {calendar}
+  schedule={{ auto: true }}
+  projectStart={new Date(2026, 3, 2)}
+  ...
+/>
+```

@@ -1,0 +1,164 @@
+---
+title: "IGanttColumn"
+description: "Type definition for a Gantt grid column"
+---
+
+The `IGanttColumn` type defines a column in the Gantt's left-side grid. Pass an array of column definitions to the `columns` prop on the `<Gantt>` component.
+
+## TypeScript definition
+
+```typescript
+export type IGanttColumn = {
+  id?: string;
+  header?: IColumn["header"];
+  width?: number;
+  flexgrow?: number;
+  align?: "left" | "right" | "center";
+  resize?: boolean;
+  sort?: boolean;
+  template?: IColumn["template"];
+  cell?: any;
+  editor?: IColumn["editor"];
+  options?: IColumn["options"];
+  getter?: (obj: IDataHash) => any;
+};
+```
+
+## Fields
+
+<ParamField body="id" type="string">
+  The field name from the task object to display in this column. For example, `"text"` renders the task's `text` property. Built-in special IDs include `"add-task"` (renders the add-task button column).
+</ParamField>
+
+<ParamField body="header" type="string | object | Array">
+  Column header configuration. Accepts:
+  - A plain string label
+  - An object `{ text: string, css?: string }` for styled headers
+  - An array for multi-row headers (one entry per header row)
+
+  When using the filter header menu, each header row can include filter controls.
+</ParamField>
+
+<ParamField body="width" type="number">
+  Fixed column width in pixels. Use `flexgrow` instead for proportional sizing.
+</ParamField>
+
+<ParamField body="flexgrow" type="number">
+  Flex-grow factor for proportional width distribution among columns that have `flexgrow` set. Works similarly to CSS `flex-grow`.
+</ParamField>
+
+<ParamField body="align" type="'left' | 'right' | 'center'" default="left">
+  Horizontal alignment of cell content.
+</ParamField>
+
+<ParamField body="resize" type="boolean" default="false">
+  When `true`, the user can drag the column border to resize it.
+</ParamField>
+
+<ParamField body="sort" type="boolean" default="false">
+  When `true`, clicking the column header sorts tasks by this column.
+</ParamField>
+
+<ParamField body="template" type="(task: ITask) => string">
+  A function returning an HTML string to render in the cell body. Use this to customize the cell content beyond the raw field value.
+
+  ```typescript
+  {
+    id: "progress",
+    header: "Progress",
+    width: 80,
+    template: (task) => `${task.progress ?? 0}%`
+  }
+  ```
+</ParamField>
+
+<ParamField body="cell" type="Component">
+  A Svelte component rendered as the cell body. Receives the task object as a prop. Use when you need reactive Svelte markup inside a cell.
+</ParamField>
+
+<ParamField body="editor" type="object">
+  Inline cell editor configuration. Defines the input type and options used when a user clicks to edit the cell. Mirrors the editor config from `@svar-ui/svelte-grid`.
+</ParamField>
+
+<ParamField body="options" type="Array">
+  Options array for editor fields of type `select`, `combo`, or `multiselect`. Each option is `{ id: any, label: string }`.
+</ParamField>
+
+<ParamField body="getter" type="(obj: IDataHash) => any">
+  Custom accessor function that derives the display value from the task object. Use when the field to display is not a direct property (e.g., formatted dates, combined fields).
+
+  ```typescript
+  {
+    id: "duration",
+    header: "Duration",
+    width: 80,
+    getter: (task) => `${task.duration} day${task.duration !== 1 ? "s" : ""}`
+  }
+  ```
+</ParamField>
+
+## Examples
+
+<Tabs>
+  <Tab title="Basic columns">
+    ```typescript
+    import { Gantt } from "@svar-ui/svelte-gantt";
+
+    const columns: IGanttColumn[] = [
+      {
+        id: "text",
+        header: "Task name",
+        flexgrow: 1,
+        resize: true,
+        sort: true
+      },
+      {
+        id: "start",
+        header: "Start",
+        width: 120,
+        getter: (task) => task.start?.toLocaleDateString()
+      },
+      {
+        id: "duration",
+        header: "Duration",
+        width: 80,
+        align: "right",
+        getter: (task) => `${task.duration}d`
+      }
+    ];
+    ```
+  </Tab>
+  <Tab title="With inline editor">
+    ```typescript
+    const columns: IGanttColumn[] = [
+      {
+        id: "text",
+        header: "Task name",
+        flexgrow: 1,
+        editor: { type: "text" }
+      },
+      {
+        id: "progress",
+        header: "Progress",
+        width: 100,
+        editor: { type: "number", config: { min: 0, max: 100 } },
+        template: (task) => `${task.progress ?? 0}%`
+      }
+    ];
+    ```
+  </Tab>
+  <Tab title="Using defaultColumns">
+    ```svelte
+    <script>
+      import { Gantt, defaultColumns } from "@svar-ui/svelte-gantt";
+    </script>
+
+    <!-- Uses the built-in column set (Name + Add button) -->
+    <Gantt {tasks} {links} columns={defaultColumns} />
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Pass `columns={false}` to the `<Gantt>` component to hide the grid entirely and show only the chart.
+</Note>

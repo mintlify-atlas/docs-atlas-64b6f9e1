@@ -1,0 +1,213 @@
+---
+title: "IConfig"
+description: "Configuration interface for the Gantt component"
+---
+
+The `IConfig` interface defines all configurable properties of the `<Gantt>` component. Pass these as props directly on the component.
+
+## TypeScript definition
+
+```typescript
+export interface IConfig {
+  tasks?: ITask[];
+  links?: ILink[];
+  taskTypes?: ITaskType[];
+  selected?: TID[];
+  activeTask?: TID | { id: TID; segmentIndex: number };
+  scales?: IScaleConfig[];
+  columns?: IGanttColumn[] | false;
+  start?: Date;
+  end?: Date;
+  lengthUnit?: TLengthUnit;
+  durationUnit?: TDurationUnit;
+  cellWidth?: number;
+  cellHeight?: number;
+  scaleHeight?: number;
+  zoom?: boolean | IZoomConfig;
+  autoScale?: boolean;
+  schedule?: IScheduleConfig;
+  undo?: boolean;
+  unscheduledTasks?: boolean;
+  baselines?: boolean;
+  rollups?: { type: "all" | "closest" };
+  markers?: IMarker[];
+  criticalPath?: ICriticalPathConfig;
+  projectStart?: Date;
+  projectEnd?: Date;
+  calendar?: Calendar;
+  splitTasks?: boolean;
+  summary?: ISummaryConfig;
+  slack?: boolean;
+}
+```
+
+## Data props
+
+<ParamField body="tasks" type="ITask[]">
+  Array of task objects to display. See [`ITask`](/api/types/itask) for the full task shape.
+</ParamField>
+
+<ParamField body="links" type="ILink[]">
+  Array of dependency link objects. See [`ILink`](/api/types/ilink) for the full link shape.
+</ParamField>
+
+<ParamField body="taskTypes" type="ITaskType[]">
+  Array of custom task type definitions. Each entry has `{ id: TID, label: string }`. The built-in types are `task`, `summary`, and `milestone`.
+</ParamField>
+
+<ParamField body="selected" type="(string | number)[]">
+  Array of task IDs that are initially selected. Supports multi-selection.
+</ParamField>
+
+<ParamField body="activeTask" type="string | number | { id: TID; segmentIndex: number }">
+  ID of the task whose editor panel is open, or an object specifying both the task ID and a segment index for split tasks.
+</ParamField>
+
+## Display props
+
+<ParamField body="scales" type="IScaleConfig[]">
+  Array of scale row configurations that define the time header. See [`IScaleConfig`](/api/types/iscaleconfig).
+</ParamField>
+
+<ParamField body="columns" type="IGanttColumn[] | false">
+  Array of grid column definitions. Pass `false` to hide the grid entirely. See [`IGanttColumn`](/api/types/iganttcolumn).
+</ParamField>
+
+<ParamField body="start" type="Date">
+  Explicit start date of the visible chart range. When omitted and `autoScale` is `true`, the range is derived from task dates.
+</ParamField>
+
+<ParamField body="end" type="Date">
+  Explicit end date of the visible chart range.
+</ParamField>
+
+<ParamField body="cellWidth" type="number" default="100">
+  Width in pixels of a single `lengthUnit` cell in the chart.
+</ParamField>
+
+<ParamField body="cellHeight" type="number" default="38">
+  Height in pixels of each task row.
+</ParamField>
+
+<ParamField body="scaleHeight" type="number" default="30">
+  Height in pixels of each scale header row.
+</ParamField>
+
+<ParamField body="markers" type="IMarker[]">
+  Array of vertical marker lines to display on the chart. Each marker has `{ start: Date, text?: string, css?: string }`. PRO feature.
+</ParamField>
+
+## Behavior props
+
+<ParamField body="lengthUnit" type="'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'" default="day">
+  The time unit that one chart cell represents. Must be less than or equal to the smallest `scales` unit.
+</ParamField>
+
+<ParamField body="durationUnit" type="'day' | 'hour'" default="day">
+  The unit used for task `duration` values and for `lag` in links.
+</ParamField>
+
+<ParamField body="autoScale" type="boolean" default="true">
+  When `true`, the chart range is automatically calculated to fit all task dates. Overrides `start` and `end` when both are provided.
+</ParamField>
+
+<ParamField body="zoom" type="boolean | IZoomConfig">
+  Enables zoom on mouse-wheel scroll. Pass `true` for defaults or an `IZoomConfig` object for custom zoom levels.
+
+  ```typescript
+  interface IZoomConfig {
+    level?: number;
+    minCellWidth?: number;
+    maxCellWidth?: number;
+    levels?: Array<{
+      minCellWidth: number;
+      maxCellWidth: number;
+      scales: IScaleConfig[];
+    }>;
+  }
+  ```
+</ParamField>
+
+## PRO feature props
+
+<Note>
+  The following props require a PRO license. They are silently ignored in the Community edition.
+</Note>
+
+<ParamField body="undo" type="boolean" default="false">
+  Enables the undo/redo history stack. Use `api.exec("undo", {})` and `api.exec("redo", {})` to navigate history.
+</ParamField>
+
+<ParamField body="unscheduledTasks" type="boolean" default="false">
+  Shows a separate area for tasks without scheduled dates (`unscheduled: true`).
+</ParamField>
+
+<ParamField body="baselines" type="boolean" default="false">
+  Renders baseline bars using `base_start` / `base_end` fields on tasks.
+</ParamField>
+
+<ParamField body="rollups" type="{ type: 'all' | 'closest' }">
+  Displays rollup bars inside summary tasks. `"all"` shows all children; `"closest"` shows only direct children.
+</ParamField>
+
+<ParamField body="criticalPath" type="ICriticalPathConfig | null">
+  Highlights the critical path on the chart. `"strict"` requires zero float; `"flexible"` allows minor slack.
+</ParamField>
+
+<ParamField body="schedule" type="IScheduleConfig">
+  Auto-scheduling configuration. `{ type: "forward", auto: boolean }`. When `auto: true`, tasks are rescheduled automatically on dependency changes.
+</ParamField>
+
+<ParamField body="summary" type="ISummaryConfig">
+  Summary task behavior: `{ autoProgress: boolean, autoConvert: boolean }`. When `autoProgress` is `true`, parent progress is calculated from children. When `autoConvert` is `true`, a task with children is automatically converted to a summary.
+</ParamField>
+
+<ParamField body="slack" type="boolean" default="false">
+  Renders slack (float) bars alongside tasks to show scheduling flexibility.
+</ParamField>
+
+<ParamField body="splitTasks" type="boolean" default="false">
+  Enables split task rendering using the `segments` field on tasks.
+</ParamField>
+
+<ParamField body="calendar" type="Calendar">
+  A `Calendar` instance defining working days and hours. Used for scheduling and duration calculations.
+</ParamField>
+
+<ParamField body="projectStart" type="Date">
+  Explicit project start date used as the lower bound for auto-scaling.
+</ParamField>
+
+<ParamField body="projectEnd" type="Date">
+  Explicit project end date used as the upper bound for auto-scaling.
+</ParamField>
+
+## Component-only props
+
+The following props are available on the `<Gantt>` Svelte component but are not part of `IConfig`.
+
+<ParamField body="init" type="(api: IApi) => void">
+  Callback invoked after the component mounts. Receives the [`IApi`](/api/iapi) instance. Use this to attach event listeners, interceptors, and data providers.
+
+  ```svelte
+  <Gantt {tasks} {links} init={(api) => {
+    api.on("select-task", ({ id }) => console.log("Selected:", id));
+  }} />
+  ```
+</ParamField>
+
+<ParamField body="readonly" type="boolean" default="false">
+  Disables all editing interactions — dragging, resizing, and in-grid editing.
+</ParamField>
+
+<ParamField body="cellBorders" type="'column' | 'full'">
+  Controls cell border rendering. `"column"` shows vertical borders only; `"full"` shows a full grid.
+</ParamField>
+
+<ParamField body="highlightTime" type="(date: Date, unit: 'day' | 'hour') => string">
+  Function returning a CSS class for a given date cell — used to highlight weekends, holidays, etc.
+</ParamField>
+
+<ParamField body="taskTemplate" type="Component">
+  A custom Svelte component rendered inside each task bar. Receives `data` (the task object) and `api`.
+</ParamField>

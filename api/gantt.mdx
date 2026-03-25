@@ -1,0 +1,419 @@
+---
+title: Gantt
+description: Full API reference for the Gantt component — the core chart component of SVAR Svelte Gantt.
+---
+
+The `Gantt` component renders the full Gantt chart with a left-side grid and a right-side timeline. It accepts data, configuration, and event handler props.
+
+## Import
+
+```typescript
+import { Gantt } from "@svar-ui/svelte-gantt";
+```
+
+## Basic usage
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  const tasks = [
+    { id: 1, text: "Task 1", start: new Date("2024-01-01"), end: new Date("2024-01-10") },
+    { id: 2, text: "Task 2", start: new Date("2024-01-05"), end: new Date("2024-01-15"), parent: 1 },
+  ];
+
+  const scales = [
+    { unit: "month", step: 1, format: "%F %Y" },
+    { unit: "day", step: 1, format: "%j" },
+  ];
+</script>
+
+<Gantt {tasks} {scales} />
+```
+
+## Accessing the API with `init`
+
+Use the `init` prop to receive the `IApi` object when the component mounts. This is the recommended way to interact with the Gantt programmatically.
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+  import type { IApi } from "@svar-ui/svelte-gantt";
+
+  let ganttApi: IApi;
+
+  function init(api: IApi) {
+    ganttApi = api;
+
+    api.on("add-task", ({ id }) => {
+      api.exec("show-editor", { id });
+    });
+  }
+</script>
+
+<Gantt {init} tasks={[]} scales={[]} />
+```
+
+Alternatively, bind `this` to get the API object as a Svelte component reference:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+  let api = $state();
+</script>
+
+<Gantt bind:this={api} tasks={[]} scales={[]} />
+```
+
+## Props
+
+### Data
+
+<ParamField path="tasks" type="ITask[]" default="[]">
+  Array of task objects to display. Each task can include `id`, `text`, `start`, `end`, `duration`, `parent`, `type`, `progress`, and other fields.
+
+  ```typescript
+  interface ITask {
+    id?: TID;
+    text?: string;
+    start?: Date;
+    end?: Date;
+    duration?: number;
+    parent?: TID;
+    type?: TTaskType; // "task" | "summary" | "milestone" | string
+    progress?: number;
+    open?: boolean;
+    rollup?: boolean;
+    unscheduled?: boolean;
+    data?: ITask[];
+    segments?: Partial<ITask>[];
+    base_start?: Date;
+    base_end?: Date;
+    base_duration?: number;
+    details?: string;
+    [key: string]: any;
+  }
+  ```
+</ParamField>
+
+<ParamField path="links" type="ILink[]" default="[]">
+  Array of dependency links between tasks.
+
+  ```typescript
+  interface ILink {
+    id?: TID;
+    type: TLinkType; // "s2s" | "s2e" | "e2s" | "e2e"
+    source: TID;
+    target: TID;
+    lag?: number;
+  }
+  ```
+</ParamField>
+
+<ParamField path="taskTypes" type="ITaskType[]">
+  Custom task type definitions. Defaults to built-in types (`task`, `summary`, `milestone`).
+
+  ```typescript
+  type ITaskType = {
+    id: TID;
+    label: string;
+  };
+  ```
+</ParamField>
+
+### Timeline
+
+<ParamField path="scales" type="IScaleConfig[]">
+  Array of scale rows displayed in the timeline header. Defaults to month + day scales.
+
+  ```typescript
+  type IScaleConfig = {
+    unit: TLengthUnit; // "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year"
+    step: number;
+    format?: ((date: Date, next?: Date) => string) | string;
+    css?: (date: Date) => string;
+  };
+  ```
+
+  ```svelte
+  <Gantt
+    scales={[
+      { unit: "month", step: 1, format: "%F %Y" },
+      { unit: "day",   step: 1, format: "%j" },
+    ]}
+  />
+  ```
+</ParamField>
+
+<ParamField path="start" type="Date" default="null">
+  Start date of the visible timeline range. When `autoScale` is `true` (the default), this is computed from the task data.
+</ParamField>
+
+<ParamField path="end" type="Date" default="null">
+  End date of the visible timeline range. When `autoScale` is `true`, this is computed from the task data.
+</ParamField>
+
+<ParamField path="lengthUnit" type="TLengthUnit" default="day">
+  The base unit used to measure durations and position tasks on the timeline. Accepted values: `"minute"`, `"hour"`, `"day"`, `"week"`, `"month"`, `"quarter"`, `"year"`.
+</ParamField>
+
+<ParamField path="durationUnit" type="TDurationUnit" default="day">
+  Unit used for task `duration` values. Accepted values: `"day"`, `"hour"`.
+</ParamField>
+
+<ParamField path="cellWidth" type="number" default="100">
+  Width in pixels of each timeline cell.
+</ParamField>
+
+<ParamField path="cellHeight" type="number" default="38">
+  Height in pixels of each task row.
+</ParamField>
+
+<ParamField path="scaleHeight" type="number" default="36">
+  Height in pixels of each scale header row.
+</ParamField>
+
+<ParamField path="autoScale" type="boolean" default="true">
+  When `true`, the visible date range is automatically computed from the task data. Set to `false` to use explicit `start` and `end` props.
+</ParamField>
+
+<ParamField path="zoom" type="boolean | IZoomConfig" default="false">
+  Enables pinch-to-zoom and scroll-wheel zoom on the timeline.
+
+  Pass `true` to use defaults, or an `IZoomConfig` object for fine-grained control:
+
+  ```typescript
+  interface IZoomConfig {
+    level?: number;
+    minCellWidth?: number;
+    maxCellWidth?: number;
+    levels?: Array<IScaleLevel>;
+  }
+  ```
+</ParamField>
+
+<ParamField path="markers" type="IMarker[]" default="[]">
+  Vertical marker lines drawn on the timeline.
+
+  ```typescript
+  interface IMarker {
+    start: Date;
+    text?: string;
+    css?: string;
+  }
+  ```
+</ParamField>
+
+### Grid
+
+<ParamField path="columns" type="false | IColumnConfig[]">
+  Column definitions for the left-side grid. Pass `false` to hide the grid entirely. Defaults to built-in columns (`text`, `start`, `duration`).
+
+  ```typescript
+  interface IColumnConfig {
+    id?: string;
+    width?: number;
+    flexgrow?: number;
+    align?: "left" | "right" | "center";
+    resize?: boolean;
+    sort?: boolean;
+    header?: ITableColumn["header"];
+    cell?: ITableColumn["cell"];
+    editor?: ITableColumn["editor"];
+    getter?: (obj: IDataHash) => any;
+  }
+  ```
+</ParamField>
+
+### Selection
+
+<ParamField path="selected" type="TID[]" default="[]">
+  IDs of the currently selected tasks.
+</ParamField>
+
+<ParamField path="activeTask" type="TID | { id: TID; segmentIndex: number }" default="null">
+  ID of the currently active (focused) task. Accepts either a plain ID or an object specifying a segment index for split tasks.
+</ParamField>
+
+### Appearance
+
+<ParamField path="readonly" type="boolean" default="false">
+  When `true`, disables all user interactions (drag, resize, edit). The chart becomes view-only.
+</ParamField>
+
+<ParamField path="cellBorders" type="'column' | 'full'" default="full">
+  Controls which cell borders are drawn in the timeline grid. `"full"` draws all borders; `"column"` draws only vertical separators.
+</ParamField>
+
+<ParamField path="highlightTime" type="(date: Date, unit: 'day' | 'hour') => string" default="null">
+  A function that returns a CSS class name for a given date cell. Use it to highlight weekends, holidays, or other date ranges.
+
+  ```svelte
+  <Gantt
+    highlightTime={(date, unit) => {
+      if (unit === "day" && date.getDay() === 0) return "wx-weekend";
+      return "";
+    }}
+  />
+  ```
+</ParamField>
+
+<ParamField path="taskTemplate" type="Component<{ data: ITask; api: IApi; onaction: (ev: { action: string; data: Record<string, any> }) => void }>" default="null">
+  A custom Svelte component used to render task bars in the timeline. Receives `data` (the task object), `api` (the Gantt API), and an `onaction` dispatcher.
+
+  ```svelte
+  <!-- CustomTask.svelte -->
+  <script>
+    let { data, api, onaction } = $props();
+  </script>
+  <div class="my-task">{data.text}</div>
+  ```
+
+  ```svelte
+  <!-- App.svelte -->
+  <script>
+    import CustomTask from "./CustomTask.svelte";
+  </script>
+  <Gantt taskTemplate={CustomTask} tasks={[]} scales={[]} />
+  ```
+</ParamField>
+
+### Scheduling
+
+<ParamField path="schedule" type="IScheduleConfig" default="{ type: 'forward' }">
+  Auto-scheduling configuration.
+
+  ```typescript
+  interface IScheduleConfig {
+    type?: "forward";
+    auto?: boolean;
+  }
+  ```
+</ParamField>
+
+<ParamField path="calendar" type="Calendar" default="null">
+  A `Calendar` instance that defines working days and hours. When provided, durations are calculated in working time and non-working days are highlighted automatically.
+
+  ```typescript
+  interface Calendar {
+    isWorkingDay(date: Date): boolean;
+    addRule(rule: (date: Date) => number): void;
+    clone(config?: ICalendarConfig): Calendar;
+    addWorkingDays(start: Date, days: number, excludeEndDate?: boolean): Date | null;
+    addWorkingHours(start: Date, hours: number): Date | null;
+    getNextWorkingDay(date: Date): Date | null;
+    getPreviousWorkingDay(date: Date): Date | null;
+    getWorkingDays(start: Date, end: Date, excludeEndDate?: boolean): number;
+    getWorkingHours(start: Date, end?: Date, excludeEndDate?: boolean): number;
+  }
+  ```
+</ParamField>
+
+<ParamField path="summary" type="ISummaryConfig" default="null">
+  Controls automatic behaviour for summary tasks.
+
+  ```typescript
+  interface ISummaryConfig {
+    autoProgress?: boolean; // auto-calculate progress from children
+    autoConvert?: boolean;  // auto-convert tasks to summaries when children are added
+  }
+  ```
+</ParamField>
+
+### Features
+
+<ParamField path="undo" type="boolean" default="false">
+  Enables undo/redo support. Use `api.exec("undo")` and `api.exec("redo")` to trigger.
+</ParamField>
+
+<ParamField path="baselines" type="boolean" default="false">
+  Shows baseline bars for tasks that have `base_start` and `base_end` set.
+</ParamField>
+
+<ParamField path="rollups" type="false | { type: 'all' | 'closest' }" default="false">
+  Renders child task bars inside collapsed summary task bars. `"closest"` shows only direct children; `"all"` shows all descendants.
+</ParamField>
+
+<ParamField path="criticalPath" type="ICriticalPathConfig" default="null">
+  Highlights the critical path of the project.
+
+  ```typescript
+  interface ICriticalPathConfig {
+    type: "strict" | "flexible";
+  }
+  ```
+</ParamField>
+
+<ParamField path="splitTasks" type="boolean" default="false">
+  Enables split tasks (tasks composed of multiple segments).
+</ParamField>
+
+<ParamField path="unscheduledTasks" type="boolean" default="false">
+  Shows a row for tasks that have no `start` date (`unscheduled: true`).
+</ParamField>
+
+<ParamField path="slack" type="boolean" default="false">
+  Shows slack (float) bars next to tasks when a critical path configuration is active.
+</ParamField>
+
+### Init
+
+<ParamField path="init" type="(api: IApi) => void" default="null">
+  Callback invoked once after the component mounts. Receives the `IApi` object. Use this to subscribe to events or call API methods on initialisation.
+
+  ```svelte
+  <script>
+    import { Gantt } from "@svar-ui/svelte-gantt";
+    import type { IApi } from "@svar-ui/svelte-gantt";
+
+    function init(api: IApi) {
+      api.on("select-task", ({ id }) => {
+        console.log("Selected:", id);
+      });
+    }
+  </script>
+
+  <Gantt {init} tasks={[]} scales={[]} />
+  ```
+</ParamField>
+
+## Event props
+
+Each Gantt action can be intercepted via an `on<ActionName>` prop. The prop name is derived from the action name by removing hyphens and prepending `on`.
+
+```svelte
+<Gantt
+  tasks={data.tasks}
+  scales={data.scales}
+  onaddtask={({ id, task }) => console.log("Added:", id)}
+  onupdatetask={({ id, task }) => console.log("Updated:", id)}
+  ondeletetask={({ id }) => console.log("Deleted:", id)}
+/>
+```
+
+<Note>Event props receive the same payload as the corresponding `api.on()` callback. Returning `false` from an event prop does **not** cancel the action — use `api.intercept()` for that.</Note>
+
+The following event props are available:
+
+| Prop | Action | Payload |
+|---|---|---|
+| `onaddtask` | `add-task` | `{ id?, task, target?, mode?, show?, select? }` |
+| `onupdatetask` | `update-task` | `{ id, task, segmentIndex?, diff?, inProgress? }` |
+| `ondeletetask` | `delete-task` | `{ id, source? }` |
+| `onopentask` | `open-task` | `{ id, mode }` |
+| `onselecttask` | `select-task` | `{ id, toggle?, range?, column?, show? }` |
+| `ondragtask` | `drag-task` | `{ id, segmentIndex?, width?, left?, top?, inProgress? }` |
+| `oncopytask` | `copy-task` | `{ id, target?, mode?, source? }` |
+| `onmovetask` | `move-task` | `{ id, target?, mode, inProgress?, source? }` |
+| `onindentask` | `indent-task` | `{ id, mode }` |
+| `onshoweditor` | `show-editor` | `{ id }` |
+| `onaddlink` | `add-link` | `{ id?, link }` |
+| `onupdatelink` | `update-link` | `{ id, link }` |
+| `ondeletelink` | `delete-link` | `{ id }` |
+| `onscrollchart` | `scroll-chart` | `{ left?, top?, date? }` |
+| `onzoomscale` | `zoom-scale` | `{ dir, ratio?, offset? }` |
+| `onsorttasks` | `sort-tasks` | `{ key, order }` |
+| `onfiltertasks` | `filter-tasks` | `{ filter?, key?, value? }` |
+| `onundo` | `undo` | `void` |
+| `onredo` | `redo` | `void` |
+| `onexportdata` | `export-data` | `IExportConfig` |

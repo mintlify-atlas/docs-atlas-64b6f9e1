@@ -1,0 +1,117 @@
+---
+title: Vertical Markers
+description: Add labelled vertical lines to the Gantt timeline to highlight deadlines, milestones, or any significant dates.
+---
+
+<Note>
+  Vertical markers are a **PRO feature**. See [licensing and trial info](https://svar.dev/svelte/gantt/#pro).
+</Note>
+
+Vertical markers are coloured lines drawn across the full height of the chart area at specific dates. Each marker can have a text label and custom CSS class, making them ideal for highlighting project milestones, approval gates, or today's date.
+
+## The `markers` Prop
+
+Pass an array of `IMarker` objects to the `<Gantt>` component:
+
+```svelte
+<Gantt {markers} tasks={data.tasks} links={data.links} scales={data.scales} />
+```
+
+## IMarker Interface
+
+```typescript
+interface IMarker {
+  start: Date;    // date at which the vertical line is placed
+  text?: string;  // optional label shown on the marker
+  css?: string;   // optional CSS class added to the marker element
+  left?: number;  // optional horizontal offset in pixels
+}
+```
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `start` | `Date` | Yes | The date position of the marker on the timeline. |
+| `text` | `string` | No | Label text displayed on the marker line. |
+| `css` | `string` | No | CSS class name applied to the marker element for custom styling. |
+| `left` | `number` | No | Additional horizontal pixel offset from the calculated position. |
+
+## Example
+
+```svelte
+<script>
+  import { getData } from "../data";
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  const data = getData();
+
+  const markers = [
+    {
+      start: new Date(2026, 3, 2),
+      text: "Start Project",
+    },
+    {
+      start: new Date(2026, 3, 8),
+      text: "Approval of strategy",
+      css: "myMiddleClass",
+    },
+    {
+      start: new Date(2026, 4, 3),
+      text: "End Project",
+      css: "myEndClass",
+    },
+  ];
+</script>
+
+<div class="gt-cell">
+  <Gantt
+    {markers}
+    tasks={data.tasks}
+    links={data.links}
+    scales={data.scales}
+  />
+</div>
+
+<style>
+  .gt-cell > :global(.wx-gantt .myMiddleClass) {
+    background-color: rgba(255, 84, 84, 0.77);
+  }
+  .gt-cell > :global(.wx-gantt .myEndClass) {
+    background-color: rgba(54, 206, 124, 0.77);
+  }
+</style>
+```
+
+## Styling Markers
+
+Apply a `css` class name to each marker and write a global CSS rule targeting `.wx-gantt .<your-class>` to control the marker's colour and appearance:
+
+```css
+/* Red marker */
+:global(.wx-gantt .myMiddleClass) {
+  background-color: rgba(255, 84, 84, 0.77);
+}
+
+/* Green marker */
+:global(.wx-gantt .myEndClass) {
+  background-color: rgba(54, 206, 124, 0.77);
+}
+```
+
+<Info>
+  Markers are also included in server-side PDF and PNG exports. Pass custom marker styles via the `styles` option in `IExportConfig` to ensure they appear correctly in the exported file.
+</Info>
+
+## Scrolling to a Marker Date
+
+Use the `"scroll-chart"` action to programmatically scroll the timeline to a specific date — useful for jumping to a marker position:
+
+```javascript
+// Scroll the chart so that this date is visible
+api.exec("scroll-chart", { date: new Date(2026, 3, 8) });
+```
+
+You can also scroll to pixel coordinates:
+
+```javascript
+api.exec("scroll-chart", { left: 400 });
+```

@@ -1,0 +1,160 @@
+---
+title: Zoom
+description: Enable mouse-wheel zooming and configure zoom levels for the Gantt chart.
+---
+
+The `zoom` prop lets users change the time scale by holding **Ctrl** and scrolling the
+mouse wheel over the chart area. It accepts either a boolean flag for simple enablement
+or a detailed configuration object.
+
+## Enable zoom
+
+Passing the bare `zoom` attribute (equivalent to `zoom={true}`) activates zooming with
+default settings. The Gantt automatically builds zoom levels from the current `scales`
+configuration:
+
+```svelte
+<Gantt
+  {tasks}
+  {links}
+  cellWidth={100}
+  zoom
+/>
+```
+
+Hold **Ctrl** and scroll the mouse wheel to zoom in and out.
+
+## Listening to zoom changes
+
+The `zoom-scale` event fires whenever the user changes the zoom level:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  function init(api) {
+    api.on("zoom-scale", () => {
+      console.log("Current zoom level:", api.getState().zoom);
+    });
+  }
+</script>
+
+<Gantt {init} {tasks} {links} cellWidth={100} zoom />
+```
+
+## Advanced zoom configuration
+
+Pass an `IZoomConfig` object for full control over zoom levels. The following example
+is taken from the `zoomConfig` demo data:
+
+```javascript
+function hoursTemplate(a, b) {
+  return `${format(a, "HH:mm")} - ${format(b, "HH:mm")}`;
+}
+
+const zoom = {
+  level: 3,
+  levels: [
+    {
+      minCellWidth: 200,
+      maxCellWidth: 400,
+      scales: [{ unit: "year", step: 1, format: "%Y" }],
+    },
+    {
+      minCellWidth: 150,
+      maxCellWidth: 400,
+      scales: [
+        { unit: "year",    step: 1, format: "%Y" },
+        { unit: "quarter", step: 1, format: "%Q" },
+      ],
+    },
+    {
+      minCellWidth: 250,
+      maxCellWidth: 350,
+      scales: [
+        { unit: "quarter", step: 1, format: "%Q" },
+        { unit: "month",   step: 1, format: "%F %Y" },
+      ],
+    },
+    {
+      minCellWidth: 100,
+      scales: [
+        { unit: "month", step: 1, format: "%F %Y" },
+        { unit: "week",  step: 1, format: "Week %W" },
+      ],
+    },
+    {
+      maxCellWidth: 200,
+      scales: [
+        { unit: "month", step: 1, format: "%F %Y" },
+        { unit: "day",   step: 1, format: "%j" },
+      ],
+    },
+    {
+      minCellWidth: 25,
+      maxCellWidth: 100,
+      scales: [
+        { unit: "day",  step: 1, format: "%M %j" },
+        { unit: "hour", step: 6, format: hoursTemplate },
+      ],
+    },
+    {
+      maxCellWidth: 120,
+      scales: [
+        { unit: "day",  step: 1, format: "%M %j" },
+        { unit: "hour", step: 1, format: "%H:%i" },
+      ],
+    },
+  ],
+};
+```
+
+```svelte
+<Gantt {tasks} {links} zoom={zoom} />
+```
+
+## IZoomConfig fields
+
+<ParamField path="level" type="number">
+  Index into the `levels` array that is active on initial render. When omitted, the
+  Gantt picks the level whose minimum unit matches the current `scales` configuration.
+</ParamField>
+
+<ParamField path="minCellWidth" type="number" default="50">
+  Global minimum cell width in pixels applied to all levels that do not specify their
+  own `minCellWidth`. Prevents cells from becoming too narrow when zooming out.
+</ParamField>
+
+<ParamField path="maxCellWidth" type="number" default="300">
+  Global maximum cell width in pixels applied to all levels that do not specify their
+  own `maxCellWidth`. Prevents cells from becoming too wide when zooming in.
+</ParamField>
+
+<ParamField path="levels" type="IScaleLevel[]">
+  Ordered list of zoom levels. Each scroll step moves one level up or down the array.
+  When omitted, levels are auto-generated from the built-in time units
+  (`year → quarter → month → week → day → hour`).
+</ParamField>
+
+## IScaleLevel fields
+
+<ParamField path="scales" type="IScaleConfig[]" required>
+  The scale rows active at this zoom level. Uses the same format as the top-level
+  `scales` prop.
+</ParamField>
+
+<ParamField path="minCellWidth" type="number">
+  Minimum cell width for this level. Overrides the global `IZoomConfig.minCellWidth`
+  for this specific level.
+</ParamField>
+
+<ParamField path="maxCellWidth" type="number">
+  Maximum cell width for this level. Overrides the global `IZoomConfig.maxCellWidth`
+  for this specific level.
+</ParamField>
+
+<Note>
+When `zoom={true}` is used without explicit levels, the Gantt automatically creates one
+level per built-in time unit. Custom scale formats provided in the `scales` prop are
+preserved and reused at the corresponding zoom level.
+</Note>

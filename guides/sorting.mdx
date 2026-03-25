@@ -1,0 +1,161 @@
+---
+title: Sorting
+description: Sort Gantt tasks by column values, configure column-level sorting, and apply custom sort handlers.
+---
+
+The Gantt chart supports sorting tasks by any column. Sorting can be triggered by clicking column headers, programmatically via the `sort-tasks` action, or controlled entirely through custom handlers.
+
+## The TSort type
+
+All sort operations use the `TSort` shape:
+
+```typescript
+type TSort = {
+  key: string;       // column id to sort by
+  order?: "asc" | "desc";
+};
+```
+
+## Enabling column-level sorting
+
+Add `sort: true` to any column definition to make that column clickable for sorting:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  const columns = [
+    { id: "text",     header: "Task name",  width: 170, sort: true, editor: "text" },
+    { id: "start",    header: "Start date", width: 120, align: "center", sort: true, editor: "datepicker" },
+    { id: "duration", header: "Duration",   width: 80,  align: "center", sort: true, editor: "text" },
+    { id: "add-task", header: "Add task",   width: 50,  align: "center" },
+  ];
+</script>
+
+<Gantt {tasks} {links} {scales} {columns} />
+```
+
+When a user clicks a sortable column header, the Gantt fires the `sort-tasks` action automatically.
+
+## Programmatic sorting with `sort-tasks`
+
+Call `api.exec("sort-tasks", ...)` to sort tasks from code:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  let gApi;
+
+  function init(api) {
+    gApi = api;
+  }
+
+  function sortByName() {
+    gApi.exec("sort-tasks", { key: "text", order: "asc" });
+  }
+
+  function sortByStart() {
+    gApi.exec("sort-tasks", { key: "start", order: "desc" });
+  }
+</script>
+
+<button onclick={sortByName}>Sort by Name</button>
+<button onclick={sortByStart}>Sort by Start (desc)</button>
+
+<Gantt bind:this={gApi} {init} {tasks} {links} {scales} />
+```
+
+### Multi-column sorting
+
+Pass `add: true` to append a secondary sort key without discarding the current sort:
+
+```svelte
+<script>
+  function sortByNameThenStart(api) {
+    api.exec("sort-tasks", { key: "text",  order: "asc" });
+    api.exec("sort-tasks", { key: "start", order: "asc", add: true });
+  }
+</script>
+```
+
+## Custom sort toolbar
+
+The example below builds a custom sort toolbar that tracks the active sort state and toggles direction on each click:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  let gApi = $state();
+  let sortConfig = $state({});
+  let icons = $state(getIcons());
+
+  function getIcons() {
+    const obj = { text: "", start: "", duration: "" };
+    const { key, order } = sortConfig;
+    if (key) obj[key] = `wxi-arrow-${order == "asc" ? "up" : "down"}`;
+    return obj;
+  }
+
+  function sort(id) {
+    const { key, order } = sortConfig;
+    let newOrder = !key ? "desc" : "asc";
+
+    if (key === id) newOrder = order === "asc" ? "desc" : "asc";
+
+    gApi.exec("sort-tasks", { key: id, order: newOrder });
+  }
+
+  function init(api) {
+    api.on("sort-tasks", config => {
+      sortConfig = config;
+      icons = getIcons();
+    });
+    gApi = api;
+  }
+</script>
+
+<div class="bar">
+  <button onclick={() => sort("text")}>
+    Task Name <i class={icons.text}></i>
+  </button>
+  <button onclick={() => sort("start")}>
+    Start Date <i class={icons.start}></i>
+  </button>
+  <button onclick={() => sort("duration")}>
+    Duration <i class={icons.duration}></i>
+  </button>
+</div>
+
+<Gantt
+  {init}
+  bind:this={gApi}
+  {tasks}
+  {links}
+  {scales}
+/>
+```
+
+## Restricting sortable columns with `intercept`
+
+Use `api.intercept` to prevent sorting on specific columns. Returning `false` from the handler cancels the action:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  function init(api) {
+    // Allow sorting only on the "text" column
+    api.intercept("sort-tasks", config => {
+      return config.key === "text";
+    });
+  }
+</script>
+
+<Gantt {init} {tasks} {links} />
+```
+
+<Note>
+The `sort-tasks` action parameters match `TSort` with an optional `add` flag: `{ key: string; order: "asc" | "desc"; add?: boolean }`.
+</Note>

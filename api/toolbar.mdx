@@ -1,0 +1,109 @@
+---
+title: Toolbar
+description: API reference for the Toolbar component, which provides task action buttons above the Gantt chart.
+---
+
+The `Toolbar` component renders an action bar above the Gantt chart. It is connected to the Gantt via the shared `api` object and dispatches actions (add, edit, delete, move, copy, etc.) directly to the chart.
+
+## Import
+
+```typescript
+import { Toolbar } from "@svar-ui/svelte-gantt";
+```
+
+## Basic usage
+
+```svelte
+<script>
+  import { Gantt, Toolbar, Editor } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<Toolbar {api} />
+<div class="gantt-container">
+  <Gantt bind:this={api} tasks={data.tasks} links={data.links} scales={data.scales} />
+  <Editor {api} />
+</div>
+```
+
+<Note>Place `Toolbar` before the `Gantt` component in the markup. Pass the same `api` reference to both so the toolbar can dispatch actions to the chart.</Note>
+
+## Props
+
+<ParamField path="api" type="IApi" required>
+  The Gantt API object. Obtain it by binding `this` on the `Gantt` component or via the `init` callback. The toolbar uses this reference to dispatch task actions.
+
+  ```svelte
+  <script>
+    let api = $state();
+  </script>
+
+  <Toolbar {api} />
+  <Gantt bind:this={api} tasks={[]} scales={[]} />
+  ```
+</ParamField>
+
+<ParamField path="items" type="IButtonConfig[]">
+  Array of button configurations that override the default toolbar items. When omitted, the default set of buttons is used.
+
+  ```typescript
+  interface IButtonConfig {
+    id?: string;
+    comp: string;       // "button" | "icon" | "separator"
+    text?: string;
+    icon?: string;
+    type?: string;
+    menuText?: string;
+    isDisabled?: (task: IParsedTask, state: IData, target?: TID | IDataHash) => boolean;
+    isHidden?:  (task: IParsedTask, state: IData, target?: TID | IDataHash) => boolean;
+  }
+  ```
+</ParamField>
+
+## Default toolbar buttons
+
+When no `items` prop is provided, the toolbar renders the following buttons:
+
+| ID | Type | Label |
+|---|---|---|
+| `add-task` | `button` | New task |
+| `edit-task` | `icon` | Edit (Ctrl+E) |
+| `delete-task` | `icon` | Delete (Ctrl+D) |
+| *(separator)* | — | — |
+| `move-task:up` | `icon` | Move up |
+| `move-task:down` | `icon` | Move down |
+| *(separator)* | — | — |
+| `copy-task` | `icon` | Copy |
+| `cut-task` | `icon` | Cut |
+| `paste-task` | `icon` | Paste |
+| *(separator)* | — | — |
+| `indent-task:add` | `icon` | Indent |
+| `indent-task:remove` | `icon` | Outdent |
+
+## Customising toolbar items
+
+You can pass a custom `items` array to add, remove, or reorder buttons. Each object in the array must have at least a `comp` field.
+
+```svelte
+<script>
+  import { Gantt, Toolbar } from "@svar-ui/svelte-gantt";
+  import { defaultToolbarButtons } from "@svar-ui/svelte-gantt";
+
+  let api = $state();
+
+  // Keep only the add and delete buttons
+  const items = [
+    { id: "add-task", comp: "button", icon: "wxi-plus", text: "New task", type: "primary" },
+    { comp: "separator" },
+    { id: "delete-task", comp: "icon", icon: "wxi-delete", menuText: "Delete" },
+  ];
+</script>
+
+<Toolbar {api} {items} />
+<Gantt bind:this={api} tasks={[]} scales={[]} />
+```
+
+<Tip>Import `defaultToolbarButtons` from `@svar-ui/svelte-gantt` to start from the built-in set and spread/filter as needed.</Tip>

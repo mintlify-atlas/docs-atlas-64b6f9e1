@@ -1,0 +1,287 @@
+---
+title: "Editor"
+description: "Add a task editor panel to your Gantt chart for creating and updating tasks."
+---
+
+The `Editor` component renders a side panel (or modal) that lets users view and edit task properties. It connects to the Gantt chart through the shared `api` object.
+
+## Basic setup
+
+<Steps>
+  <Step title="Import the components">
+    Import both `Gantt` and `Editor` from the package.
+
+    ```svelte
+    import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+    ```
+  </Step>
+  <Step title="Create a shared api reference">
+    Declare a reactive `api` variable and pass it to both components using `bind:this` on `Gantt` or the `init` callback.
+
+    ```svelte
+    <script>
+      import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+      import { getData } from "./data";
+
+      const data = getData();
+      let api = $state();
+
+      function init(ganttApi) {
+        api = ganttApi;
+        // open the editor automatically after a task is added
+        api.on("add-task", ({ id }) => {
+          api.exec("show-editor", { id });
+        });
+      }
+    </script>
+
+    <Gantt
+      {init}
+      tasks={data.tasks}
+      links={data.links}
+      scales={data.scales}
+    />
+    <Editor {api} />
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  `Editor` must receive the same `api` instance as `Gantt`. Using `bind:this={api}` on `Gantt` is the simplest way to achieve this.
+</Note>
+
+## Editor props
+
+<ParamField path="api" type="IApi">
+  The Gantt API object. Connects the editor to the chart so it can read and write task data.
+</ParamField>
+
+<ParamField path="items" type="TEditorItem[]">
+  Array of editor field descriptors. Overrides the default set of fields rendered in the panel.
+</ParamField>
+
+<ParamField path="placement" type="'sidebar' | 'modal'" default="sidebar">
+  Controls where the editor appears. Use `"modal"` to open it as a centred dialog.
+</ParamField>
+
+<ParamField path="autoSave" type="boolean" default="true">
+  When `true`, changes are saved automatically as the user edits fields. Set to `false` to require an explicit save action.
+</ParamField>
+
+<ParamField path="topBar" type="boolean | object" default="true">
+  Show or hide the title bar at the top of the editor. Pass `false` to remove it entirely.
+</ParamField>
+
+<ParamField path="bottomBar" type="object">
+  Configuration for the button bar at the bottom of the editor. Accepts an `items` array of toolbar-style button descriptors.
+</ParamField>
+
+## Default editor items
+
+The `defaultEditorItems` array defines the built-in fields shown in the editor. You can import it directly or call `getEditorItems()` to get a fresh copy that has task-type options populated from the current config.
+
+```svelte
+<script>
+  import { defaultEditorItems, getEditorItems } from "@svar-ui/svelte-gantt";
+
+  // static reference
+  console.log(defaultEditorItems);
+
+  // copy with populated task-type options
+  const items = getEditorItems();
+</script>
+```
+
+The default fields are:
+
+| Key | Component | Notes |
+|---|---|---|
+| `text` | `text` | Task name |
+| `details` | `textarea` | Description |
+| `type` | `select` | Task type; hidden for segment tasks |
+| `start` | `date` | Start date; hidden for summary tasks |
+| `end` | `date` | End date; hidden for summary and milestone tasks |
+| `duration` | `counter` | Duration; hidden for summary and milestone tasks |
+| `progress` | `slider` | Progress percentage; hidden for milestones |
+| `links` | `links` | Dependency links; hidden for segment tasks |
+
+## Editor item fields
+
+Each item in the `items` array is an object with the following properties:
+
+<ParamField path="comp" type="string" required>
+  The control type. Built-in values: `"text"`, `"textarea"`, `"date"`, `"counter"`, `"slider"`, `"combo"`, `"select"`, `"multiselect"`, `"radio"`, `"checkbox"`, `"links"`, `"twostate"`.
+</ParamField>
+
+<ParamField path="key" type="string" required>
+  The task property this field reads from and writes to.
+</ParamField>
+
+<ParamField path="label" type="string">
+  Display label shown above the field.
+</ParamField>
+
+<ParamField path="labelTemplate" type="(value: any) => string">
+  Function that returns a dynamic label based on the current field value.
+</ParamField>
+
+<ParamField path="config" type="Record<string, any>">
+  Control-specific configuration options (e.g. `{ format: "%d-%m-%Y" }` for date fields, `{ min: 1, max: 100 }` for sliders).
+</ParamField>
+
+<ParamField path="isHidden" type="(task: Partial<ITask>) => boolean">
+  Function that returns `true` to hide the field for a particular task.
+</ParamField>
+
+<ParamField path="isDisabled" type="(task: Partial<ITask>, state: IData) => boolean">
+  Function that returns `true` to disable the field for a particular task and state.
+</ParamField>
+
+## Customising the field list
+
+Use `getEditorItems()` to start from the defaults, then filter, reorder, or extend the array:
+
+```svelte
+<script>
+  import { Gantt, Editor, getEditorItems } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+
+  // select a specific subset of fields in a custom order
+  const keys = ["text", "type", "start", "end", "duration", "progress", "details"];
+  const defaultEditorItems = getEditorItems();
+  const items = keys.map(key => ({
+    ...defaultEditorItems.find(op => op.key === key),
+  }));
+
+  const bottomBar = {
+    items: [
+      { comp: "button", type: "secondary", text: "Close", id: "close" },
+      { comp: "spacer" },
+      { comp: "button", type: "danger",     text: "Delete", id: "delete" },
+      { comp: "button", type: "primary",    text: "Save",   id: "save" },
+    ],
+  };
+</script>
+
+<Gantt bind:this={api} tasks={data.tasks} links={data.links} scales={data.scales} />
+<Editor
+  {api}
+  {items}
+  {bottomBar}
+  topBar={false}
+  placement="modal"
+  autoSave={false}
+/>
+```
+
+## Custom controls
+
+You can register your own Svelte components as editor controls with `registerEditorItem`. The registered name is then used as the `comp` value in an item descriptor.
+
+```svelte
+<script>
+  import {
+    Gantt,
+    Editor,
+    registerEditorItem,
+    getEditorItems,
+    defaultTaskTypes,
+  } from "@svar-ui/svelte-gantt";
+  import { RadioButtonGroup } from "@svar-ui/svelte-core";
+  import UsersCustomCombo from "./UsersCustomCombo.svelte";
+  import { getData, users } from "./data";
+
+  // register custom controls once, before rendering
+  registerEditorItem("radio", RadioButtonGroup);
+  registerEditorItem("custom-combo", UsersCustomCombo);
+
+  const defaultEditorItems = getEditorItems();
+  const items = defaultEditorItems.map(item => ({ ...item }));
+
+  // replace the default type selector with a radio group
+  items.splice(
+    defaultEditorItems.findIndex(d => d.key === "type"),
+    1,
+    {
+      key: "type",
+      comp: "radio",
+      label: "Type",
+      options: defaultTaskTypes.map(o => ({ ...o, value: o.id })),
+      config: { type: "inline" },
+    },
+    {
+      key: "assigned",
+      comp: "custom-combo",
+      label: "Assigned",
+      options: users,
+    }
+  );
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<Gantt bind:this={api} tasks={data.tasks} links={data.links} scales={data.scales} />
+<Editor {api} {items} />
+```
+
+<Tip>
+  Call `registerEditorItem` once at module level, before the component tree is rendered, to avoid re-registration on each render.
+</Tip>
+
+## Field validation
+
+Add `required` to make a field mandatory, or provide a `validation` function and an optional `validationMessage` for custom rules:
+
+```svelte
+<script>
+  import { Gantt, Editor, getEditorItems } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+
+  const items = getEditorItems().map(ed => ({
+    ...ed,
+    ...(ed.comp === "text" && { required: true }),
+    ...(ed.comp === "counter" && {
+      validation: v => v <= 50,
+      validationMessage: "Task duration should not exceed 50 days",
+    }),
+  }));
+</script>
+
+<Gantt bind:this={api} tasks={data.tasks} links={data.links} scales={data.scales} />
+<Editor {api} {items} autoSave={false} />
+```
+
+<Warning>
+  Validation only runs when `autoSave` is `false`. With `autoSave={true}` (the default) each keystroke is saved immediately and validation is not triggered.
+</Warning>
+
+## Readonly mode
+
+To open the editor in a non-editable view, pass `readonly` to the `Gantt` component. You can also selectively disable individual fields using the `isDisabled` callback on each item:
+
+```svelte
+<script>
+  import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+  import { getData } from "./data";
+
+  const data = getData();
+  let api = $state();
+</script>
+
+<!-- entire gantt in readonly mode -->
+<Gantt
+  bind:this={api}
+  readonly
+  tasks={data.tasks}
+  links={data.links}
+  scales={data.scales}
+/>
+<Editor {api} />
+```

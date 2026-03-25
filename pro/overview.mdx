@@ -1,0 +1,64 @@
+---
+title: PRO Features Overview
+description: Overview of all PRO edition features in SVAR Svelte Gantt, including auto-scheduling, critical path, export, and more.
+---
+
+<Info>
+  PRO features require the **SVAR Svelte Gantt PRO Edition**. A free trial is available — see [licensing and pricing](https://svar.dev/svelte/gantt/pricing/) for details.
+</Info>
+
+SVAR Svelte Gantt is available in both open-source (MIT) and [PRO editions](https://svar.dev/svelte/gantt/#pro). The PRO edition unlocks a suite of advanced project management capabilities built on top of the core widget.
+
+## What's Included in PRO
+
+<CardGroup cols={2}>
+  <Card title="Work Days Calendar" icon="calendar" href="/pro/calendar">
+    Define custom working schedules with per-day hour rules. Durations and scheduling automatically respect non-working days and hours.
+  </Card>
+  <Card title="Auto-Scheduling" icon="arrows-rotate" href="/pro/auto-scheduling">
+    Forward scheduling mode that automatically recalculates task dates based on Finish-to-Start dependencies when any task changes.
+  </Card>
+  <Card title="Critical Path" icon="route" href="/pro/critical-path">
+    Highlight the sequence of tasks that directly determines the project end date. Supports strict and flexible calculation modes.
+  </Card>
+  <Card title="Slack Visualization" icon="gauge" href="/pro/critical-path">
+    Visualize free and total slack on the timeline to understand scheduling flexibility alongside the critical path.
+  </Card>
+  <Card title="Baselines" icon="flag" href="/pro/baselines">
+    Compare current task dates against a saved baseline snapshot. Baseline bars are rendered below each task bar.
+  </Card>
+  <Card title="Rollups" icon="layer-group" href="/pro/overview">
+    Display child task bars rolled up onto collapsed summary tasks so progress is visible at any zoom level.
+  </Card>
+  <Card title="Split Tasks" icon="scissors" href="/pro/split-tasks">
+    Break a single task into multiple time segments, each independently draggable and resizable on the timeline.
+  </Card>
+  <Card title="Vertical Markers" icon="ruler-vertical" href="/pro/markers">
+    Add labelled vertical lines to the timeline to highlight deadlines, milestones, or any significant dates.
+  </Card>
+  <Card title="Unscheduled Tasks" icon="circle-dashed" href="/pro/unscheduled-tasks">
+    Mark tasks with no fixed dates so they appear in the grid without a timeline bar, ready to be scheduled later.
+  </Card>
+  <Card title="Undo / Redo" icon="clock-rotate-left" href="/pro/undo-redo">
+    Step backward and forward through the full edit history with configurable undo/redo actions.
+  </Card>
+  <Card title="Export" icon="file-export" href="/pro/export">
+    Export the Gantt chart to PDF, PNG, or Excel (XLSX) via a server-side export service, or import/export MS Project XML files client-side.
+  </Card>
+  <Card title="MS Project Import/Export" icon="file-code" href="/pro/export">
+    Round-trip your project data to and from Microsoft Project XML format entirely in the browser.
+  </Card>
+</CardGroup>
+
+## Export Capabilities
+
+The PRO edition provides two complementary export pathways:
+
+- **Server-side export** (PDF, PNG, XLSX) — the widget serializes its current state and sends it to the hosted SVAR export service (`https://export.svar.dev/gantt/<version>`). The service renders the chart and returns the binary file.
+- **Client-side MS Project import/export** — XML files are read and written entirely in the browser using the `import-data` and `export-data` actions with `format: "mspx"`. No server round-trip is required.
+
+See the [Export page](/pro/export) for full configuration details.
+
+## Free Trial
+
+A fully functional free trial is available. Visit the [pricing page](https://svar.dev/svelte/gantt/pricing/) for a feature comparison between the MIT and PRO editions and to start your trial.

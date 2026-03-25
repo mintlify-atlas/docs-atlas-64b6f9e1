@@ -1,0 +1,104 @@
+---
+title: Unscheduled Tasks
+description: Display tasks with no fixed dates in the grid without a timeline bar, ready to be scheduled later.
+---
+
+<Note>
+  Unscheduled tasks are a **PRO feature**. See [licensing and trial info](https://svar.dev/svelte/gantt/#pro).
+</Note>
+
+Unscheduled tasks represent work items that have been identified but not yet assigned to specific dates. They appear as rows in the grid area with no bar drawn on the chart. This is useful for backlog items, placeholder tasks, or any work that is planned but not yet scheduled.
+
+## The `unscheduledTasks` Prop
+
+Enable unscheduled task support on the `<Gantt>` component:
+
+```svelte
+<Gantt unscheduledTasks={true} tasks={data.tasks} links={data.links} />
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `unscheduledTasks` | `boolean` | `false` | When `true`, tasks with `unscheduled: true` are displayed in the grid without a timeline bar. |
+
+## The `unscheduled` Field on Tasks
+
+Mark individual tasks as unscheduled by setting `unscheduled: true` on the task object:
+
+```typescript
+interface ITask {
+  // ... standard fields ...
+  unscheduled?: boolean; // when true, the task has no timeline bar
+}
+```
+
+An unscheduled task does not need `start`, `end`, or `duration` values. If these are present, they are ignored for rendering purposes while `unscheduled` remains `true`.
+
+## Example
+
+```javascript
+const tasks = [
+  {
+    id: 1,
+    text: "Scoping session",
+    start: new Date(2026, 3, 2),
+    end: new Date(2026, 3, 5),
+    parent: 0,
+    type: "task",
+  },
+  {
+    id: 2,
+    text: "Vendor evaluation",
+    unscheduled: true,  // no start/end required
+    parent: 0,
+    type: "task",
+  },
+  {
+    id: 3,
+    text: "Risk assessment",
+    unscheduled: true,
+    parent: 0,
+    type: "task",
+  },
+];
+```
+
+## Full Example
+
+```svelte
+<script>
+  import { getData } from "../data";
+  import { Gantt, Editor } from "@svar-ui/svelte-gantt";
+
+  const data = getData("day", { unscheduledTasks: true });
+  let api = $state();
+</script>
+
+<Gantt
+  bind:this={api}
+  tasks={data.tasks}
+  links={data.links}
+  scales={data.scales}
+  unscheduledTasks={true}
+/>
+<Editor {api} />
+```
+
+## Scheduling an Unscheduled Task
+
+To move an unscheduled task onto the timeline, update the task with `start` and `end` dates and set `unscheduled` to `false` (or remove the field):
+
+```javascript
+api.exec("update-task", {
+  id: 2,
+  task: {
+    unscheduled: false,
+    start: new Date(2026, 3, 10),
+    end: new Date(2026, 3, 15),
+  },
+});
+```
+
+<Tip>
+  Unscheduled tasks integrate naturally with the [Export](/pro/export) feature — they appear as rows in Excel exports without date columns populated, and are omitted from the chart area in PDF/PNG exports.
+</Tip>

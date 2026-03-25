@@ -1,28 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "SVAR Svelte Gantt",
+  "projectType": "sdk-library",
+  "projectName": "SVAR Svelte Gantt",
+  "projectDescription": "A lightweight, customizable, and interactive Svelte Gantt chart component for visualizing and managing project timelines with drag-and-drop, dependencies, and a rich API.",
   "theme": "willow",
-  "colors": {
-    "primary": "#6aa2f9",
-    "light": "#0f1a2c",
-    "dark": "#d0d0d1"
-  },
-  "favicon": "https://media.brand.dev/1e846964-9454-4428-a9d3-85361c8b034e.jpg",
-  "logo": {
-    "light": "https://media.brand.dev/a6fd2aaf-a07a-44a9-b482-fcacab0dea1d.svg",
-    "dark": "https://media.brand.dev/2fcb3339-2a21-4c10-90a3-1187bd3af9ab.svg"
-  },
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/svar-widgets/gantt"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/svar-widgets/gantt"
-    }
-  },
+  "primaryColor": "#6aa2f9",
+  "lightColor": "#0f1a2c",
+  "darkColor": "#d0d0d1",
   "navigation": {
     "tabs": [
       {
@@ -31,7 +14,7 @@
           {
             "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "getting-started/installation",
               "getting-started/quickstart"
             ]
@@ -126,5 +109,48 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "Interactive drag-and-drop task management",
+    "Task dependencies with link types (S2S, S2E, E2S, E2E)",
+    "Hierarchical tasks with summary/subtask support",
+    "Configurable multi-row time scales with zoom support",
+    "Customizable grid columns with inline editors",
+    "Built-in toolbar, context menu, and modal editor",
+    "Filtering (including natural language search)",
+    "Localization with multiple locale support",
+    "Light and dark themes (Material, Willow, WillowDark)",
+    "Full TypeScript support",
+    "RestDataProvider for server-side integration",
+    "PRO edition with auto-scheduling, critical path, export, and more"
+  ],
+  "publicApiSurface": [
+    "Gantt (component)",
+    "Toolbar (component)",
+    "Editor (component)",
+    "ContextMenu (component)",
+    "Tooltip (component)",
+    "HeaderMenu (component)",
+    "Material (theme component)",
+    "Willow (theme component)",
+    "WillowDark (theme component)",
+    "RestDataProvider (class)",
+    "IApi.exec(action, params)",
+    "IApi.on(action, callback)",
+    "IApi.intercept(action, callback)",
+    "IApi.getState()",
+    "IApi.getReactiveState()",
+    "IApi.getTask(id)",
+    "IApi.serialize()",
+    "defaultEditorItems",
+    "defaultToolbarButtons",
+    "defaultMenuOptions",
+    "defaultColumns",
+    "defaultTaskTypes",
+    "getEditorItems()",
+    "getToolbarButtons()",
+    "getMenuOptions()",
+    "registerScaleUnit()",
+    "registerEditorItem()"
+  ]
 }

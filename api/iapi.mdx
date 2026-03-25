@@ -1,0 +1,301 @@
+---
+title: "IApi"
+description: "The Gantt API object for programmatic control"
+---
+
+The `IApi` interface provides programmatic access to the Gantt component. Use it to execute actions, subscribe to events, intercept and cancel actions, read state, and integrate data providers.
+
+## Obtaining the API
+
+Pass an `init` callback to the `<Gantt>` component. The callback receives the `IApi` instance immediately after mount.
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+  import type { IApi } from "@svar-ui/svelte-gantt";
+
+  let ganttApi: IApi;
+
+  function init(api: IApi) {
+    ganttApi = api;
+    // attach listeners, interceptors, providers here
+    api.on("select-task", ({ id }) => {
+      console.log("Task selected:", id);
+    });
+  }
+</script>
+
+<Gantt {tasks} {links} {init} />
+```
+
+Alternatively, bind the component instance directly (the component exposes the same `IApi` interface):
+
+```svelte
+<script>
+  let api = $state();
+</script>
+
+<Gantt bind:this={api} {tasks} {links} />
+```
+
+## TypeScript definition
+
+```typescript
+export interface IApi {
+  exec<A extends keyof TMethodsConfig | (string & {})>(
+    action: A,
+    params?: A extends keyof TMethodsConfig ? TMethodsConfig[A] : any
+  ): Promise<any>;
+
+  on<A extends keyof TMethodsConfig | (string & {})>(
+    action: A,
+    callback: (config: A extends keyof TMethodsConfig ? TMethodsConfig[A] : any) => any,
+    config?: IEventConfig
+  ): void;
+
+  intercept<A extends keyof TMethodsConfig | (string & {})>(
+    action: A,
+    callback: (config: A extends keyof TMethodsConfig ? TMethodsConfig[A] : any) => any,
+    config?: IEventConfig
+  ): void;
+
+  detach(tag: IEventConfig["tag"]): void;
+
+  getState(): IData;
+  getReactiveState(): { [Key in keyof IData]: IPublicWritable<IData[Key]> };
+
+  setNext(ev: IEventBus<TMethodsConfig>): void;
+
+  getStores(): { data: DataStore };
+  getTable(waitRender?: boolean): Promise<ITableApi> | ITableApi;
+  getTask(id: TID): ITask;
+  serialize(): ITask[];
+}
+```
+
+## Methods
+
+### exec()
+
+Executes a Gantt action programmatically. See [Actions](/api/actions) for all available actions and their parameters.
+
+<ParamField body="action" type="string" required>
+  The action name, e.g. `"add-task"`, `"update-task"`, `"select-task"`.
+</ParamField>
+
+<ParamField body="params" type="object">
+  Parameters for the action. The type is inferred from `TMethodsConfig` based on the action name.
+</ParamField>
+
+**Returns**: `Promise<any>` — resolves after the action and all handlers have run.
+
+```typescript
+// Add a new task
+await api.exec("add-task", {
+  task: { text: "New task", start: new Date(), duration: 3 }
+});
+
+// Update an existing task
+await api.exec("update-task", {
+  id: 42,
+  task: { text: "Updated name", progress: 75 }
+});
+
+// Scroll the chart to a specific date
+api.exec("scroll-chart", { date: new Date("2024-06-01") });
+```
+
+---
+
+### on()
+
+Subscribes to an action event. The callback fires **after** the action has been processed.
+
+<ParamField body="action" type="string" required>
+  The action name to listen to.
+</ParamField>
+
+<ParamField body="callback" type="(params) => any" required>
+  Called with the action parameters after the action completes. The `params` object may be mutated by the store (e.g. `id` is set on `add-task` after the task is created).
+</ParamField>
+
+<ParamField body="config" type="IEventConfig">
+  Optional configuration object. Set `config.tag` to a symbol or string to group listeners for later removal via `detach()`.
+</ParamField>
+
+```typescript
+const tag = Symbol();
+
+api.on("add-task", ({ id, task }) => {
+  console.log("Task added with id:", id, task);
+}, { tag });
+
+api.on("delete-task", ({ id }) => {
+  console.log("Task deleted:", id);
+}, { tag });
+
+// Remove all listeners in the tag group later
+api.detach(tag);
+```
+
+---
+
+### intercept()
+
+Registers a handler that fires **before** an action is processed. Return `false` from the callback to cancel the action entirely.
+
+<ParamField body="action" type="string" required>
+  The action name to intercept.
+</ParamField>
+
+<ParamField body="callback" type="(params) => any" required>
+  Called with the action parameters before the action is processed. Return `false` to prevent the action from executing.
+</ParamField>
+
+<ParamField body="config" type="IEventConfig">
+  Optional configuration. Set `config.tag` for grouped removal.
+</ParamField>
+
+```typescript
+// Prevent deletion of tasks with subtasks
+api.intercept("delete-task", ({ id }) => {
+  const task = api.getTask(id);
+  if (task.data?.length) {
+    alert("Cannot delete a task that has subtasks.");
+    return false;
+  }
+});
+
+// Prevent dragging (reordering) tasks
+api.intercept("drag-task", (ev) => {
+  if (typeof ev.top !== "undefined") return false; // block reorder
+  return true; // allow horizontal drag
+});
+```
+
+---
+
+### detach()
+
+Removes all `on()` and `intercept()` listeners associated with the given tag.
+
+<ParamField body="tag" type="symbol | string" required>
+  The tag value used when registering listeners.
+</ParamField>
+
+```typescript
+const tag = Symbol("myListeners");
+api.on("add-task", handler, { tag });
+api.on("update-task", handler2, { tag });
+
+// Later — removes both listeners at once
+api.detach(tag);
+```
+
+---
+
+### getState()
+
+Returns the current internal state snapshot as a plain object. Useful for reading task lists, current selection, scroll position, and scale data.
+
+**Returns**: `IData` — the full state object.
+
+```typescript
+const state = api.getState();
+console.log(state.selected);    // array of selected task IDs
+console.log(state.scrollLeft);  // current horizontal scroll
+console.log(state._tasks);      // flat array of positioned tasks
+```
+
+---
+
+### getReactiveState()
+
+Returns reactive Svelte writable stores for each state key. Subscribe to these in Svelte components for live updates.
+
+**Returns**: `{ [Key in keyof IData]: IPublicWritable<IData[Key]> }`
+
+```svelte
+<script>
+  let selected = $state([]);
+
+  function init(api) {
+    const { selected: selectedStore } = api.getReactiveState();
+    selectedStore.subscribe(ids => {
+      selected = ids;
+    });
+  }
+</script>
+```
+
+---
+
+### setNext()
+
+Connects a data provider (e.g. `RestDataProvider`) to the API event bus. The provider receives all actions and persists changes to the backend.
+
+<ParamField body="ev" type="IEventBus<TMethodsConfig>" required>
+  A data provider instance that implements `IEventBus`. Typically a `RestDataProvider`.
+</ParamField>
+
+```typescript
+import { RestDataProvider } from "@svar-ui/gantt-data-provider";
+
+function init(api) {
+  const provider = new RestDataProvider("/api");
+  api.setNext(provider);
+}
+```
+
+---
+
+### getStores()
+
+Returns the internal data store instances. Primarily used for advanced integrations.
+
+**Returns**: `{ data: DataStore }`
+
+---
+
+### getTable()
+
+Returns the underlying grid API instance for direct grid manipulation.
+
+<ParamField body="waitRender" type="boolean">
+  When `true`, returns a `Promise` that resolves after the next render cycle completes. Useful if you need to access the grid immediately after a state change.
+</ParamField>
+
+**Returns**: `ITableApi | Promise<ITableApi>`
+
+---
+
+### getTask()
+
+Returns a task object by ID from the current state.
+
+<ParamField body="id" type="string | number" required>
+  The task ID to look up.
+</ParamField>
+
+**Returns**: `ITask` — the task object, or `undefined` if not found.
+
+```typescript
+const task = api.getTask(42);
+console.log(task.text, task.start);
+```
+
+---
+
+### serialize()
+
+Returns the current task tree as a flat array of plain task objects, suitable for saving or sending to a server.
+
+**Returns**: `ITask[]`
+
+```typescript
+const tasks = api.serialize();
+fetch("/api/tasks", {
+  method: "POST",
+  body: JSON.stringify(tasks)
+});
+```

@@ -1,0 +1,399 @@
+---
+title: "Quickstart"
+description: "Build a working Gantt chart in your Svelte app in a few steps."
+---
+
+This guide walks you through creating a Gantt chart with tasks, dependencies, and a time scale. By the end you will have a fully interactive chart running in your app.
+
+<Steps>
+
+<Step title="Install the package">
+
+<CodeGroup>
+
+```bash npm
+npm install @svar-ui/svelte-gantt
+```
+
+```bash yarn
+yarn add @svar-ui/svelte-gantt
+```
+
+```bash pnpm
+pnpm add @svar-ui/svelte-gantt
+```
+
+</CodeGroup>
+
+</Step>
+
+<Step title="Define your data">
+
+A Gantt chart requires three props: `tasks`, `links`, and `scales`.
+
+**Tasks** are the items displayed on the chart. Each task needs an `id`, `start`, `end` (or `duration`), and `text`. Use `parent: 0` for top-level tasks and `type: "summary"` for parent tasks with subtasks.
+
+**Links** define dependencies between tasks. Each link has a `source` and `target` (task IDs) and a `type` (`"e2s"` for end-to-start, `"s2s"` for start-to-start, `"s2e"` for start-to-end).
+
+**Scales** configure the header rows of the timeline. Each scale entry specifies a time `unit`, a `step`, and a `format` string.
+
+```javascript
+const tasks = [
+  {
+    id: 1,
+    start: new Date(2026, 3, 2),
+    end: new Date(2026, 3, 16),
+    text: "Project planning",
+    progress: 40,
+    parent: 0,
+    type: "summary",
+    open: true,
+  },
+  {
+    id: 10,
+    start: new Date(2026, 3, 2),
+    duration: 3,
+    text: "Marketing analysis",
+    progress: 100,
+    parent: 1,
+    type: "task",
+  },
+  {
+    id: 11,
+    start: new Date(2026, 3, 5),
+    duration: 2,
+    text: "Discussions",
+    progress: 72,
+    parent: 1,
+    type: "task",
+  },
+  {
+    id: 12,
+    start: new Date(2026, 3, 8),
+    text: "Approval of strategy",
+    progress: 100,
+    parent: 1,
+    type: "milestone",
+  },
+];
+
+const links = [
+  { id: 1, source: 10, target: 11, type: "e2s" },
+  { id: 2, source: 11, target: 12, type: "e2s" },
+];
+
+const scales = [
+  { unit: "month", step: 1, format: "%F %Y" },
+  { unit: "day",   step: 1, format: "%j" },
+];
+```
+
+<Note>
+  JavaScript's `Date` constructor uses zero-based months: `new Date(2026, 3, 2)` is April 2, 2026.
+</Note>
+
+</Step>
+
+<Step title="Render the Gantt component">
+
+Import `Gantt` and a theme wrapper from `@svar-ui/svelte-gantt`, then wrap the chart in the theme component and pass your data as props.
+
+```svelte
+<script>
+  import { Gantt, Willow } from "@svar-ui/svelte-gantt";
+
+  const tasks = [
+    {
+      id: 1,
+      start: new Date(2026, 3, 2),
+      end: new Date(2026, 3, 16),
+      text: "Project planning",
+      progress: 40,
+      parent: 0,
+      type: "summary",
+      open: true,
+    },
+    {
+      id: 10,
+      start: new Date(2026, 3, 2),
+      duration: 3,
+      text: "Marketing analysis",
+      progress: 100,
+      parent: 1,
+      type: "task",
+    },
+    {
+      id: 11,
+      start: new Date(2026, 3, 5),
+      duration: 2,
+      text: "Discussions",
+      progress: 72,
+      parent: 1,
+      type: "task",
+    },
+    {
+      id: 12,
+      start: new Date(2026, 3, 8),
+      text: "Approval of strategy",
+      progress: 100,
+      parent: 1,
+      type: "milestone",
+    },
+  ];
+
+  const links = [
+    { id: 1, source: 10, target: 11, type: "e2s" },
+    { id: 2, source: 11, target: 12, type: "e2s" },
+  ];
+
+  const scales = [
+    { unit: "month", step: 1, format: "%F %Y" },
+    { unit: "day",   step: 1, format: "%j" },
+  ];
+</script>
+
+<Willow>
+  <Gantt {tasks} {links} {scales} />
+</Willow>
+```
+
+The `<Willow>` wrapper injects the default light theme styles. You can swap it for `<WillowDark>` or `<Material>` without changing any other code.
+
+</Step>
+
+<Step title="Choose a theme">
+
+Three themes are bundled with the package. Wrap your `<Gantt>` in whichever component matches your app's design.
+
+<Tabs>
+  <Tab title="Willow (light)">
+
+```svelte
+<script>
+  import { Gantt, Willow } from "@svar-ui/svelte-gantt";
+</script>
+
+<Willow>
+  <Gantt {tasks} {links} {scales} />
+</Willow>
+```
+
+  </Tab>
+  <Tab title="WillowDark">
+
+```svelte
+<script>
+  import { Gantt, WillowDark } from "@svar-ui/svelte-gantt";
+</script>
+
+<WillowDark>
+  <Gantt {tasks} {links} {scales} />
+</WillowDark>
+```
+
+  </Tab>
+  <Tab title="Material">
+
+```svelte
+<script>
+  import { Gantt, Material } from "@svar-ui/svelte-gantt";
+</script>
+
+<Material>
+  <Gantt {tasks} {links} {scales} />
+</Material>
+```
+
+  </Tab>
+</Tabs>
+
+</Step>
+
+<Step title="Access the API with the init prop">
+
+The `init` prop gives you access to the `IApi` object, which exposes methods for programmatic control — adding tasks, listening to events, executing actions, and integrating a data provider.
+
+Pass a function to the `init` prop. It is called once when the component mounts, with the API object as its argument.
+
+```svelte
+<script>
+  import { Gantt, Willow } from "@svar-ui/svelte-gantt";
+
+  const tasks = [ /* ... */ ];
+  const links = [ /* ... */ ];
+  const scales = [
+    { unit: "month", step: 1, format: "%F %Y" },
+    { unit: "day",   step: 1, format: "%j" },
+  ];
+
+  function init(api) {
+    // Listen for any action executed on the Gantt
+    api.on("add-task", ev => {
+      console.log("Task added:", ev.task);
+    });
+
+    api.on("update-task", ev => {
+      console.log("Task updated:", ev.task);
+    });
+  }
+</script>
+
+<Willow>
+  <Gantt {tasks} {links} {scales} {init} />
+</Willow>
+```
+
+You can also bind the component instance with `bind:this` to call API methods reactively:
+
+```svelte
+<script>
+  import { Gantt, Willow } from "@svar-ui/svelte-gantt";
+
+  let api = $state();
+
+  function scrollToToday() {
+    api.exec("scroll-chart", { date: new Date() });
+  }
+</script>
+
+<button onclick={scrollToToday}>Scroll to today</button>
+
+<Willow>
+  <Gantt bind:this={api} {tasks} {links} {scales} />
+</Willow>
+```
+
+<Tip>
+  Use `bind:this` when you need a reference to the API after mount (for example, in event handlers). Use the `init` prop when you need to set up listeners or integrate a data provider at initialization time.
+</Tip>
+
+</Step>
+
+</Steps>
+
+## Complete example
+
+The following is a self-contained Svelte component that renders a Gantt chart with tasks across multiple phases, dependency links between them, and a month/day time scale.
+
+```svelte
+<script>
+  import { Gantt, Willow } from "@svar-ui/svelte-gantt";
+
+  const tasks = [
+    {
+      id: 1,
+      start: new Date(2026, 3, 2),
+      end: new Date(2026, 3, 16),
+      text: "Project planning",
+      progress: 40,
+      parent: 0,
+      type: "summary",
+      open: true,
+      details: "Outline the project's scope and resources.",
+    },
+    {
+      id: 10,
+      start: new Date(2026, 3, 2),
+      duration: 3,
+      text: "Marketing analysis",
+      progress: 100,
+      parent: 1,
+      type: "task",
+      details: "Analyze market trends and competitors.",
+    },
+    {
+      id: 11,
+      start: new Date(2026, 3, 5),
+      duration: 2,
+      text: "Discussions",
+      progress: 72,
+      parent: 1,
+      type: "task",
+      details: "Team discussions on project strategies.",
+    },
+    {
+      id: 12,
+      start: new Date(2026, 3, 8),
+      text: "Approval of strategy",
+      progress: 100,
+      parent: 1,
+      type: "milestone",
+      details: "Sign-off on the agreed project strategy.",
+    },
+    {
+      id: 2,
+      start: new Date(2026, 3, 2),
+      end: new Date(2026, 3, 12),
+      text: "Project management",
+      progress: 8,
+      parent: 0,
+      type: "summary",
+      open: true,
+      details: "Coordinate resources, schedule, and deliverables.",
+    },
+    {
+      id: 20,
+      start: new Date(2026, 3, 2),
+      duration: 4,
+      text: "Resource planning",
+      progress: 10,
+      parent: 2,
+      type: "task",
+      details: "Identify and allocate team resources and budget.",
+    },
+    {
+      id: 21,
+      start: new Date(2026, 3, 6),
+      duration: 2,
+      text: "Getting approval",
+      progress: 10,
+      parent: 2,
+      type: "task",
+      details: "Obtain stakeholder sign-off on the project plan.",
+    },
+    {
+      id: 22,
+      start: new Date(2026, 3, 8),
+      duration: 2,
+      text: "Team introduction",
+      progress: 0,
+      parent: 2,
+      type: "task",
+      details: "Onboard team members and align on goals.",
+    },
+  ];
+
+  const links = [
+    { id: 1, source: 10, target: 11, type: "e2s" },
+    { id: 2, source: 11, target: 12, type: "e2s" },
+    { id: 3, source: 20, target: 21, type: "e2s" },
+    { id: 4, source: 21, target: 22, type: "e2s" },
+  ];
+
+  const scales = [
+    { unit: "month", step: 1, format: "%F %Y" },
+    { unit: "day",   step: 1, format: "%j" },
+  ];
+</script>
+
+<Willow>
+  <Gantt {tasks} {links} {scales} />
+</Willow>
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Tasks and links" icon="list-check" href="/configuration/tasks-and-links">
+    Full reference for task fields, link types, milestones, and summary tasks.
+  </Card>
+  <Card title="Scales and zoom" icon="calendar" href="/configuration/scales">
+    Configure multi-row time scales, zoom levels, and custom scale units.
+  </Card>
+  <Card title="Columns" icon="table-columns" href="/configuration/columns">
+    Customize the grid columns shown alongside the timeline.
+  </Card>
+  <Card title="API reference" icon="code" href="/api/gantt">
+    Full reference for all component props, events, and the IApi object.
+  </Card>
+</CardGroup>

@@ -1,0 +1,149 @@
+---
+title: Scales
+description: Configure the time scale header rows that appear above the Gantt chart area.
+---
+
+The `scales` prop defines the rows of time headers displayed above the chart. Each entry
+in the array describes one header row, with the rows rendered top-to-bottom in the order
+you provide them.
+
+## Basic example
+
+The most common configuration is a two-row scale showing months above and days below:
+
+```svelte
+<script>
+  import { Gantt } from "@svar-ui/svelte-gantt";
+
+  const scales = [
+    { unit: "month", step: 1, format: "%F %Y" },
+    { unit: "day",   step: 1, format: "%j" },
+  ];
+</script>
+
+<Gantt {tasks} {links} {scales} />
+```
+
+## Multi-row scale
+
+You can stack as many rows as needed. The following four-row configuration is taken
+directly from the `complexScales` demo dataset:
+
+```javascript
+const complexScales = [
+  { unit: "year",  step: 1, format: "%Y" },
+  { unit: "month", step: 2, format: "%F %Y" },
+  { unit: "week",  step: 1, format: "%w" },
+  { unit: "day",   step: 1, format: "%j", css: dayStyle },
+];
+```
+
+Passed to the component:
+
+```svelte
+<Gantt
+  {tasks}
+  {links}
+  scales={complexScales}
+  start={new Date(2026, 3, 1)}
+  end={new Date(2026, 4, 12)}
+  cellWidth={60}
+/>
+```
+
+## Hour-level scale
+
+For intraday scheduling, use `hour` as the smallest unit:
+
+```javascript
+const scalesHour = [
+  { unit: "day",  step: 1, format: "%M %j" },
+  { unit: "hour", step: 1, format: "%H:%i" },
+];
+```
+
+## IScaleConfig fields
+
+<ParamField path="unit" type="'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year' | string" required>
+  The time unit for this scale row. The smallest unit across all rows determines the
+  base cell size (`cellWidth`). Custom units can be registered with `registerScaleUnit`.
+</ParamField>
+
+<ParamField path="step" type="number" required>
+  Number of units per cell. For example, `{ unit: "month", step: 2 }` creates one cell
+  every two months.
+</ParamField>
+
+<ParamField path="format" type="string | (date: Date, next?: Date) => string">
+  Format string or function controlling the label inside each cell.
+
+  **Format string tokens:**
+
+  | Token | Output |
+  |---|---|
+  | `%Y` | 4-digit year (e.g. `2026`) |
+  | `%F` | Full month name (e.g. `April`) |
+  | `%M` | Short month name (e.g. `Apr`) |
+  | `%j` | Day of month without leading zero |
+  | `%d` | Day of month with leading zero |
+  | `%H` | Hour (24-hour, with leading zero) |
+  | `%i` | Minutes with leading zero |
+  | `%w` | Week number |
+  | `%W` | Week number (alternative) |
+  | `%Q` | Quarter label (e.g. `Q1`) |
+
+  **Function format** receives the cell start date and the next cell start date, giving
+  you full control:
+
+  ```javascript
+  import { format } from "date-fns";
+
+  const weekScaleTemplate = (a, b) =>
+    `${format(a, "MMM d")} - ${format(b, "MMM d")}`;
+
+  const scales = [
+    { unit: "month", step: 1, format: "%F %Y" },
+    { unit: "week",  step: 1, format: weekScaleTemplate },
+  ];
+  ```
+</ParamField>
+
+<ParamField path="css" type="(date: Date) => string">
+  Function that returns a CSS class name for a given cell date. Useful for highlighting
+  weekends or other special days:
+
+  ```javascript
+  const dayStyle = date => {
+    const day = date.getDay();
+    return day === 5 || day === 6 ? "sday" : "";
+  };
+
+  const scales = [
+    { unit: "month", step: 1, format: "%F %Y" },
+    { unit: "day",   step: 1, format: "%j", css: dayStyle },
+  ];
+  ```
+</ParamField>
+
+## Custom scale units
+
+If the built-in units do not meet your needs, register a custom unit with
+`registerScaleUnit`. A custom unit must implement the `GanttScaleUnit` interface:
+
+```typescript
+type GanttScaleUnit = {
+  start:  (date: Date) => Date;
+  end:    (date: Date) => Date;
+  isSame: (date1: Date, date2: Date) => boolean;
+  add:    (date: Date, num: number) => Date;
+  diff?:  (date1: Date, date2: Date) => number;
+  smallerCount?: { [unit: string]: number | ((date: Date) => number) };
+  biggerCount?:  { [unit: string]: number | ((date: Date) => number) };
+};
+```
+
+<Note>
+The `smallerCount` and `biggerCount` maps inform the zoom logic how many of this
+unit fit into larger units and vice versa. Providing them ensures correct cell-width
+calculations when zooming.
+</Note>
